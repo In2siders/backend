@@ -19,3 +19,11 @@ class PacketFactory:
             timestamp=datetime.now().isoformat(),
             data=data
         )
+@dataclass
+class ServerMessagePacket(BasePacket):
+    type: str = "ServerMessagePacket"
+    sesion: str
+    userId: str
+    messageid: str
+    body: str
+    attachments: Optional[list] = None
