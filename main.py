@@ -1,49 +1,28 @@
 import flask
 import flask_socketio
 from datetime import datetime
+from packet import BasePacket, PacketFactory
 
 app = flask.Flask(__name__)
-sio = flask_socketio.SocketIO(app, cors_allowed_origins="*")  
-
-@app.route('/')
-def index():
-    return {
-        "error": False,
-        "message": "Hello, World!"
-    }
+sio = flask_socketio.SocketIO(app, cors_allowed_origins="*")
 
 @sio.on('connect')
 def handle_connect():
     print('Client connected')
-    flask_socketio.emit('response', {
-        'message': 'Welcome! Connected to server',
-        'type': 'connection'
-    })
+    # Send welcome packet
+    welcome_packet = PacketFactory.create('welcome', {'message': 'Connected!'})
+    sio.emit('packet', welcome_packet.to_dict())
 
-@sio.on('disconnect')
-def handle_disconnect():
-    print('Client disconnected')
-
-@sio.on('message')
-def handle_message(data):
-    print(f'Received message: {data}')
+@sio.on('packet')
+def handle_packet(data):
+    packet = BasePacket(**data)
+    print(f'Received packet type: {packet.type}')
     
-    flask_socketio.emit('response', {
-        'message': f"Server received: {data.get('text', '')}",
-        'original_data': data,
-        'timestamp': datetime.now().isoformat(),
-        'type': 'echo'
-    })
+    sio.emit('packet', packet.to_dict())
 
-@sio.on('custom_event')
-def handle_custom_event(data):
-    print(f'Custom event received: {data}')
-    
-    flask_socketio.emit('response', {
-        'message': 'Custom event processed',
-        'received_data': data,
-        'type': 'custom'
-    })
+@app.route('/')
+def index():
+    return {"message": "WebSocket server is running."}
 
 if __name__ == '__main__':
     sio.run(app, debug=True, host='0.0.0.0', port=5000)
