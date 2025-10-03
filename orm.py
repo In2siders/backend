@@ -8,3 +8,4 @@ class Auth(Model):
 
     class Meta:
         database = db_auth 
+
