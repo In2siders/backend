@@ -11,6 +11,8 @@ class BasePacket:
     def to_dict(self) -> dict:
         return asdict(self)
 
+
+
 class PacketFactory:
     @staticmethod
     def create(packet_type: str, data: Any = None) -> BasePacket:
