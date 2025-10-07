@@ -16,13 +16,17 @@ def handle_connect():
     welcome_packet = PacketFactory.create('welcome', {'message': 'Connected!'})
     sio.emit('packet', welcome_packet.to_dict())
 
+
+Decrypted_message = 0
+check = 0
 # Maneja los paquetes entrantes, Solo muestra el tipo el la consola, si quieres usar el contenido, usa "data"
 @sio.on('packet')
 def handle_packet(data):
+    global Decrypted_message
+    global check
     packet = BasePacket(**data)
     print(f'Received packet type: {packet.type}')
-    Decrypted_message = 0
-    if ( packet.data[0] == 1):
+    if ( packet.data[0] == 1 and check == 0):
         print(f'Creando Este weon: {packet.data[1]}');
         AddUser(packet.data[1], packet.data[2])
         message = str(random.randint(0, 2000000000))+str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000))+ str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000))
@@ -37,6 +41,8 @@ def handle_packet(data):
         }
         Packete_Challenge = PacketFactory.create('challenge', payload)
         sio.emit('packet', Packete_Challenge.to_dict())
+        check = 1
+        print(check)
     if ( packet.data[0] == 2):
         print(f'Respeusta del Cliente: {packet.data[1]}')
         if ( packet.data[1] == Decrypted_message):
@@ -46,7 +52,6 @@ def handle_packet(data):
             }
             Packete_Challenge = PacketFactory.create('chall_response', payload)
             sio.emit('packet', Packete_Challenge.to_dict())
-    print(packet)
     sio.emit('packet', packet.to_dict())
 
 @app.route('/')
