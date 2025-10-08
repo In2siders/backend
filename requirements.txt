@@ -4,3 +4,4 @@ valkey-glide==2.1.0
 flask_socketio==5.5.1
 python-gnupg==0.5.5
 standard-imghdr==3.13.0
+gunicorn==23.0.0

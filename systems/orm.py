@@ -1,9 +1,19 @@
-from peewee import CharField, TextField, UUIDField, ForeignKeyField, IPField, ManyToManyField
-from db import BaseModel
+import uuid
+from peewee import CharField, TextField, UUIDField, ForeignKeyField, IPField, ManyToManyField, Model
+from systems.db import db
+
+# Base model
+class BaseModel(Model):
+    class Meta:
+        database = db
+
+# ==============
+# ORM Structures
+# ==============
 
 # User model
 class User(BaseModel):
-    userId      = UUIDField(primary_key=True) # User unique ID
+    userId      = UUIDField(primary_key=True, default=uuid.uuid4) # User unique ID
     username    = CharField(unique=True) # User unique username
     pub_key     = CharField(index=True) # User unique public key
     bio         = TextField(default="No bio yet!") # TODO: DO NOT IMPLEMENT YET.
@@ -11,13 +21,13 @@ class User(BaseModel):
 
 # User session
 class Session(BaseModel):
-    sessionId = CharField(primary_key=True)
+    sessionId = CharField(primary_key=True, default=uuid.uuid4)
     user = ForeignKeyField(User, backref='sessions')
     userIp = IPField()
 
 # Group model
 class Group(BaseModel):
-    groupId = UUIDField(primary_key=True)
+    groupId = UUIDField(primary_key=True, default=uuid.uuid4)
     groupName = CharField(unique=True)
     description = TextField() # TODO: WAITING FOR FRONTEND DESIGN.
     owner = ForeignKeyField(User, backref='owned_groups')
@@ -29,7 +39,7 @@ Membership = Group.members.get_through_model()
 
 # Attachments model
 class Attachment(BaseModel):
-    attachmentId = UUIDField(primary_key=True)
+    attachmentId = UUIDField(primary_key=True, default=uuid.uuid4)
     file_url = CharField() # URL to S3 or other storage (Behind a CDN)
     file_name = CharField() # Original file name
     uploaded_by = ForeignKeyField(User, backref='attachments')
@@ -37,7 +47,7 @@ class Attachment(BaseModel):
 
 # Message schema
 class Message(BaseModel):
-    messageId = UUIDField(primary_key=True)
+    messageId = UUIDField(primary_key=True, default=uuid.uuid4)
     body = TextField() # Encrypted message body
     sender = ForeignKeyField(User, backref='sent_messages')
     timestamp = CharField() # Timestamp of the message
@@ -56,3 +66,8 @@ class MessageTransport(BaseModel):
 
 def orm_get_all_models():
     return [User, Session, Group, Membership, Attachment, Message, MessageTransport]
+
+def initialize_db():
+    db.connect()
+    db.create_tables(orm_get_all_models())
+    db.close()

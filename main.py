@@ -1,9 +1,22 @@
+# Flask
 import flask
+from flask import request
+
+# Flask SocketIO
 import flask_socketio
-from datetime import datetime
+
+# Packet
 from packet import BasePacket, PacketFactory
-from auth import AddUser, GenerateSecretMessage
+
+# Databases
+from systems.orm import initialize_db
+from systems.auth import add_user, create_encrypted_data, ensure_unique_username
+
+# Others
 import random
+import os
+
+# ============================
 
 app = flask.Flask(__name__)
 sio = flask_socketio.SocketIO(app, cors_allowed_origins="*")
@@ -58,5 +71,46 @@ def handle_packet(data):
 def index():
     return {"message": "WebSocket server is running."}
 
+@app.route('/v1/auth/check', methods=['GET'])
+def route_check_username():
+    username = request.args.get('username')
+    if not username or len(username) < 3:
+        return {"error": "Invalid username."}, 400
+
+    if ensure_unique_username(username):
+        return {"available": True}, 200
+    else:
+        return {"available": False}, 200
+
+@app.route('/v1/auth/challenge', methods=['POST'])
+def route_request_challenge(): # TODO: Fix this shit
+    username = request.json.get('username')
+    if not username or len(username) < 3:
+        return {"error": "Invalid username."}, 400
+
+    if not ensure_unique_username(username):
+        return {"error": "Username already exists."}, 400
+
+    challenge = os.urandom(16).hex()
+    return {"challenge": challenge}, 200
+
+@app.route('/v1/auth/register', methods=['POST'])
+def route_register_user():
+    username = request.json.get('username')
+    public_key = request.json.get('pk')
+
+    if not username or not public_key:
+        return {"error": "Username and public key are required."}, 400
+
+    if not ensure_unique_username(username):
+        return {"error": "Username already exists."}, 400
+
+    if add_user(username, public_key):
+        return {"message": "User registered successfully."}, 201
+    else:
+        return {"error": "Failed to register user."}, 500
+
 if __name__ == '__main__':
-    sio.run(app, debug=True, host='0.0.0.0', port=5000)
+    initialize_db()
+    sio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
+    app.run(host='0.0.0.0', port=5000)

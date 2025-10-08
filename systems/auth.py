@@ -20,7 +20,8 @@ def add_user(usuario, clave_publica):
         try:
             User.insert(username=usuario, pub_key=clave_publica).execute()
             return True
-        except IntegrityError:
+        except IntegrityError as e:
+            print('[- ERROR -] IntegrityError:', e)
             return False
 
 def create_encrypted_data(usuario, data):
@@ -50,38 +51,3 @@ def create_encrypted_data(usuario, data):
     except Exception as e:
         print(f"[- ERROR -] Error encrypting: {e}")
         return None
-
-# ==============
-# Auth Server
-# ==============
-
-@app.route('v1/auth/check', methods=['GET'])
-def route_check_username(username: str):
-    if not username or len(username) < 3:
-        return {"error": "Invalid username."}, 400
-
-    if ensure_unique_username(username):
-        return {"available": True}, 200
-    else:
-        return {"available": False}, 200
-
-@app.route('v1/auth/challenge', methods=['POST'])
-def route_request_challenge(username: str):
-    if not ensure_unique_username(username):
-        return {"error": "Username already exists."}, 400
-
-    challenge = os.urandom(16).hex()
-    return {"challenge": challenge}, 200
-
-@app.route('v1/auth/register', methods=['POST'])
-def route_register_user(username: str, public_key: str):
-    if not username or not public_key:
-        return {"error": "Username and public key are required."}, 400
-
-    if not ensure_unique_username(username):
-        return {"error": "Username already exists."}, 400
-
-    if add_user(username, public_key):
-        return {"message": "User registered successfully."}, 201
-    else:
-        return {"error": "Failed to register user."}, 500
