@@ -2,7 +2,7 @@
 import flask
 from flask import request
 
-# Flask SocketIO
+from flask_cors import CORS
 import flask_socketio
 
 # Packet
@@ -20,6 +20,7 @@ import os
 
 app = flask.Flask(__name__)
 sio = flask_socketio.SocketIO(app, cors_allowed_origins="*")
+CORS(app, origins="*")
 
 # Todo esto debberia moverse a Websocket.py
 @sio.on('connect')
