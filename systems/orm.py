@@ -1,64 +1,88 @@
+import uuid
+from peewee import CharField, TextField, UUIDField, ForeignKeyField, IPField, ManyToManyField, Model, BooleanField
+from systems.db import db
 
+# Base model
+class BaseModel(Model):
+    class Meta:
+        database = db
 
-from peewee import CharField, TextField, UUIDField, ForeignKeyField, IPField
-from db import BaseModel
+# ==============
+# ORM Structures
+# ==============
 
 # User model
 class User(BaseModel):
-    userId      = UUIDField(primary_key=True) # User unique ID
+    userId      = UUIDField(primary_key=True, default=uuid.uuid4) # User unique ID
     username    = CharField(unique=True) # User unique username
     pub_key     = CharField(index=True) # User unique public key
-    bio         = TextField() # TODO: DO NOT IMPLEMENT YET.
+    bio         = TextField(default="No bio yet!") # TODO: DO NOT IMPLEMENT YET.
+    canLogin    = BooleanField(default=True)
 
+# Challenge
+class Challenge(BaseModel):
+    challengeId = UUIDField(primary_key=True, default=uuid.uuid4)
+    user = ForeignKeyField(User, backref='challenges', index=True)
+    solution = CharField() # Challenge solution
+    expires_at = CharField() # Expiration timestamp
 
 # User session
 class Session(BaseModel):
-    sessionId = CharField(primary_key=True)
+    sessionId = CharField(primary_key=True, default=uuid.uuid4)
     user = ForeignKeyField(User, backref='sessions')
     userIp = IPField()
 
 # Group model
 class Group(BaseModel):
-    groupId = UUIDField(primary_key=True)
+    groupId = UUIDField(primary_key=True, default=uuid.uuid4)
     groupName = CharField(unique=True)
     description = TextField() # TODO: WAITING FOR FRONTEND DESIGN.
     owner = ForeignKeyField(User, backref='owned_groups')
     group_key = CharField() # Symmetric key for the group
+    members = ManyToManyField(User, backref='groups')
 
 # Membership model (M2M relation | User <-> Group)
-class Membership(BaseModel):
-    user = ForeignKeyField(User, backref='memberships')
-    group = ForeignKeyField(Group, backref='memberships')
-
-    class Meta:
-        primary_key = False
-        indexes = (
-            (('user', 'group'), True), # Unique constraint on user and group
-        )
+Membership = Group.members.get_through_model() 
 
 # Attachments model
 class Attachment(BaseModel):
-    attachmentId = UUIDField(primary_key=True)
+    attachmentId = UUIDField(primary_key=True, default=uuid.uuid4)
     file_url = CharField() # URL to S3 or other storage (Behind a CDN)
     file_name = CharField() # Original file name
     uploaded_by = ForeignKeyField(User, backref='attachments')
     uploaded_at = CharField() # Timestamp of upload
 
 # Message schema
-"""
-Message request
-{
-    "sId": "sessionId",
-    "body": "Encrypted message body",
-    "attachmentIds": ["attachmentId1", "attachmentId2"], # Optional
-    "to": "groupId" | "userId", # Recipient (group or user)
-    "isGroup": true | false # Is the recipient a group?
-}
-"""
 class Message(BaseModel):
-    messageId = UUIDField(primary_key=True)
+    messageId = UUIDField(primary_key=True, default=uuid.uuid4)
     body = TextField() # Encrypted message body
     sender = ForeignKeyField(User, backref='sent_messages')
-    to_group = ForeignKeyField(Group, null=True, backref='messages') # Nullable for direct messages
-    to_user = ForeignKeyField(User, null=True, backref='received_messages') # Nullable for group messages
     timestamp = CharField() # Timestamp of the message
+
+# Message transport
+class MessageTransport(BaseModel):
+    message = ForeignKeyField(Message, backref='transports')
+    source = ForeignKeyField(User, backref='sent_transports', null=True)
+    target = ForeignKeyField(User, backref='received_messages', null=True)
+
+    class Meta:
+        primary_key = False
+        indexes = (
+            (('source', 'target', 'message'), True), # Unique constraint on source, target, and message
+        )
+
+def orm_get_all_models():
+    return [User, Session, Group, Membership, Attachment, Message, MessageTransport, Challenge]
+
+def initialize_db():
+    try:
+        if not db.is_closed():
+            db.close()
+        with db.atomic():
+            db.create_tables(orm_get_all_models())
+
+        print("[*] Database initialized and tables created.")
+        return True
+    except Exception as e:
+        print("[- ERROR -] Failed to initialize database:", e)
+        return False

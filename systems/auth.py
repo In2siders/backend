@@ -1,39 +1,95 @@
+from flask import Flask
 from peewee import *
-from orm import db_auth
-import os.path
-from orm import Auth
+from systems.orm import User, Challenge
+from systems.db import db
 import gnupg
 
+app = Flask(__name__)
 gpg = gnupg.GPG(gnupghome='gnup')
 
+def ensure_unique_username(username):
+    try:
+        User.get(User.username == username)
+        return False  # Username already exists
+    except DoesNotExist:
+        return True  # Username is unique
 
-def CheckDBexists():
-    if (not os.path.isfile('auth.db')):
-        db_auth.connect()
-        db_auth.create_tables([Auth])
-        db_auth.close()
+def add_user(username, pk):
+    with db.atomic():
+        try:
+            User.insert(username=username, pub_key=pk).execute()
+            return True
+        except IntegrityError as e:
+            print('[- ERROR -] IntegrityError:', e)
+            return False
 
+def create_challenge(username, length=32):
+    import os
+    import binascii
+    from datetime import datetime, timedelta, UTC
 
-def AddUser(usuario, clave_publica):
-    CheckDBexists()
-    db_auth.connect()
-    new_user = Auth(usuario=usuario, clave_publica=clave_publica)
-    new_user.save()
-    db_auth.commit()
-    db_auth.close()
+    plainChallenge = binascii.hexlify(os.urandom(length)).decode()
+    expires_at = (datetime.now(UTC) + timedelta(minutes=1)).isoformat()
 
+    with db.atomic():
+        try:
+            user = User.select().where(User.username == username).get()
+            db_challenge = Challenge.create(user=user, solution=plainChallenge, expires_at=expires_at)
 
-def GenerateSecretMessage(usuario, Mensage):
-    db_auth.connect()
-    clave_publica_armored = Auth.select().where(Auth.usuario == usuario).get().clave_publica
-    db_auth.close()
+            # Encrypt the challenge before returning
+            encrypted_challenge = create_encrypted_data(username, plainChallenge)
+
+            return {
+                "c_id": str(db_challenge.challengeId),
+                "challenge": encrypted_challenge,
+                "expires_at": expires_at
+            }
+
+        except DoesNotExist:
+            return "DOES_NOT_EXIST"
+        except IntegrityError:
+            return "INTEGRITY_ERROR"
+        except Exception as e:
+            return e
+
+def verify_challenge(challenge_id, solution):
+    from datetime import datetime, UTC
+
+    try:
+        challenge = (Challenge.select()
+                     .where(Challenge.challengeId == challenge_id)
+                     .where(Challenge.solution == solution).get())
+        expires_str = challenge.expires_at
+        if expires_str.endswith('Z'):
+            expires_str = expires_str.replace('Z', '+00:00')
+
+        expires_dt = datetime.fromisoformat(expires_str)
+        if expires_dt < datetime.now(UTC):
+            print("[-] Challenge expired.")
+            return False
+
+        challenge.delete_instance()  # Invalidate the challenge after successful verification
+        return True
+    except DoesNotExist:
+        return False
+    except Exception as e:
+        print(f"[- ERROR -] Exception during challenge lookup: {e}")
+        return False
+
+def create_encrypted_data(username, data):
+    with db.atomic():
+        try:
+            clave_publica_armored = User.select().where(User.username == username).get().pub_key
+        except DoesNotExist:
+            print(f"[- ERROR -] ${username} | Searched and not found on db. ")
+            return None
 
     try:
         import_result = gpg.import_keys(clave_publica_armored)
         key_fingerprint = import_result.results[0]['fingerprint']
 
         encrypted_data = gpg.encrypt(
-            Mensage,
+            data=data,
             recipients=[key_fingerprint],
             always_trust=True,
             armor=True
@@ -42,9 +98,8 @@ def GenerateSecretMessage(usuario, Mensage):
         if encrypted_data.ok:
             return str(encrypted_data)
         else:
-            print(f"Error during encryption: {encrypted_data.status}")
+            print(f"[- ERROR -] Cannot encrypt: {encrypted_data.status}")
             return None
-
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f"[- ERROR -] Error encrypting: {e}")
         return None

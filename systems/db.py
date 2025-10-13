@@ -1,7 +1,3 @@
-from peewee import SqliteDatabase, Model
+from peewee import SqliteDatabase
 
 db = SqliteDatabase('dev.db')
-
-class BaseModel(Model):
-    class Meta:
-        database = db
