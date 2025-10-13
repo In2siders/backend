@@ -10,7 +10,7 @@ from packet import BasePacket, PacketFactory
 
 # Databases
 from systems.orm import initialize_db
-from systems.auth import add_user, create_encrypted_data, ensure_unique_username
+from systems.auth import add_user, create_encrypted_data, ensure_unique_username, create_challenge
 
 # Others
 import random
@@ -72,7 +72,7 @@ def handle_packet(data):
 def index():
     return {"message": "WebSocket server is running."}
 
-@app.route('/v1/auth/check', methods=['GET'])
+@app.get('/v1/auth/check')
 def route_check_username():
     username = request.args.get('username')
     if not username or len(username) < 3:
@@ -83,17 +83,33 @@ def route_check_username():
     else:
         return {"available": False}, 200
 
-@app.route('/v1/auth/challenge', methods=['POST'])
-def route_request_challenge(): # TODO: Fix this shit
+@app.post('/v1/auth/challenge')
+def route_request_challenge():
     username = request.json.get('username')
     if not username or len(username) < 3:
         return {"error": "Invalid username."}, 400
 
-    if not ensure_unique_username(username):
-        return {"error": "Username already exists."}, 400
+    if ensure_unique_username(username):
+        return {"error": "User not found"}, 400
 
-    challenge = os.urandom(16).hex()
-    return {"challenge": challenge}, 200
+    computed_challenge = create_challenge(username)
+    if computed_challenge is None:
+        return {"error": "Failed to create challenge."}, 500
+
+    # Error check
+    if isinstance(computed_challenge, str):
+        if computed_challenge == "DOES_NOT_EXIST":
+            return {"error": "User does not exist."}, 400
+        elif computed_challenge == "INTEGRITY_ERROR":
+            return {"error": "Integrity error occurred."}, 500
+        else:
+            return {"error": str(computed_challenge)}, 500
+
+    return {
+        "challengeId": computed_challenge["c_id"],
+        "challenge": computed_challenge["challenge"],
+        "expires_at": computed_challenge["expires_at"]
+    }, 200
 
 @app.route('/v1/auth/register', methods=['POST'])
 def route_register_user():
@@ -111,7 +127,7 @@ def route_register_user():
     else:
         return {"error": "Failed to register user."}, 500
 
+initialize_db()
 if __name__ == '__main__':
-    initialize_db()
     sio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
     app.run(host='0.0.0.0', port=5000)

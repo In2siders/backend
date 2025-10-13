@@ -1,5 +1,5 @@
 import uuid
-from peewee import CharField, TextField, UUIDField, ForeignKeyField, IPField, ManyToManyField, Model
+from peewee import CharField, TextField, UUIDField, ForeignKeyField, IPField, ManyToManyField, Model, BooleanField
 from systems.db import db
 
 # Base model
@@ -17,7 +17,14 @@ class User(BaseModel):
     username    = CharField(unique=True) # User unique username
     pub_key     = CharField(index=True) # User unique public key
     bio         = TextField(default="No bio yet!") # TODO: DO NOT IMPLEMENT YET.
+    canLogin    = BooleanField(default=True)
 
+# Challenge
+class Challenge(BaseModel):
+    challengeId = UUIDField(primary_key=True, default=uuid.uuid4)
+    user = ForeignKeyField(User, backref='challenges', index=True)
+    solution = CharField() # Challenge solution
+    expires_at = CharField() # Expiration timestamp
 
 # User session
 class Session(BaseModel):
@@ -65,9 +72,17 @@ class MessageTransport(BaseModel):
         )
 
 def orm_get_all_models():
-    return [User, Session, Group, Membership, Attachment, Message, MessageTransport]
+    return [User, Session, Group, Membership, Attachment, Message, MessageTransport, Challenge]
 
 def initialize_db():
-    db.connect()
-    db.create_tables(orm_get_all_models())
-    db.close()
+    try:
+        if not db.is_closed():
+            db.close()
+        with db.atomic():
+            db.create_tables(orm_get_all_models())
+
+        print("[*] Database initialized and tables created.")
+        return True
+    except Exception as e:
+        print("[- ERROR -] Failed to initialize database:", e)
+        return False
