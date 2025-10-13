@@ -29,7 +29,7 @@ def create_challenge(username, length=32):
     from datetime import datetime, timedelta, UTC
 
     plainChallenge = binascii.hexlify(os.urandom(length)).decode()
-    expires_at = (datetime.now(UTC) + timedelta(minutes=5)).isoformat() + 'Z'  # 5 minutes from now
+    expires_at = (datetime.now(UTC) + timedelta(minutes=1)).isoformat()
 
     with db.atomic():
         try:
@@ -51,6 +51,30 @@ def create_challenge(username, length=32):
             return "INTEGRITY_ERROR"
         except Exception as e:
             return e
+
+def verify_challenge(challenge_id, solution):
+    from datetime import datetime, UTC
+
+    try:
+        challenge = (Challenge.select()
+                     .where(Challenge.challengeId == challenge_id)
+                     .where(Challenge.solution == solution).get())
+        expires_str = challenge.expires_at
+        if expires_str.endswith('Z'):
+            expires_str = expires_str.replace('Z', '+00:00')
+
+        expires_dt = datetime.fromisoformat(expires_str)
+        if expires_dt < datetime.now(UTC):
+            print("[-] Challenge expired.")
+            return False
+
+        challenge.delete_instance()  # Invalidate the challenge after successful verification
+        return True
+    except DoesNotExist:
+        return False
+    except Exception as e:
+        print(f"[- ERROR -] Exception during challenge lookup: {e}")
+        return False
 
 def create_encrypted_data(username, data):
     with db.atomic():

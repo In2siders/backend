@@ -10,7 +10,7 @@ from packet import BasePacket, PacketFactory
 
 # Databases
 from systems.orm import initialize_db
-from systems.auth import add_user, create_encrypted_data, ensure_unique_username, create_challenge
+from systems.auth import add_user, create_encrypted_data, ensure_unique_username, create_challenge, verify_challenge
 
 # Others
 import random
@@ -72,6 +72,9 @@ def handle_packet(data):
 def index():
     return {"message": "WebSocket server is running."}
 
+#
+# Username Check
+#
 @app.get('/v1/auth/check')
 def route_check_username():
     username = request.args.get('username')
@@ -83,6 +86,11 @@ def route_check_username():
     else:
         return {"available": False}, 200
 
+#
+# Challenge
+#
+
+# > Request
 @app.post('/v1/auth/challenge')
 def route_request_challenge():
     username = request.json.get('username')
@@ -111,6 +119,30 @@ def route_request_challenge():
         "expires_at": computed_challenge["expires_at"]
     }, 200
 
+# > Verify
+@app.post('/v1/auth/challenge/verify')
+def route_verify_challenge():
+    challenge_id = request.json.get('challengeId')
+    solution = request.json.get('solution')
+
+    if not challenge_id or not solution:
+        return {"error": "Challenge ID and solution are required."}, 400
+
+    try:
+        is_valid = verify_challenge(challenge_id, solution)
+        if is_valid:
+            return {"message": "Challenge verified successfully."}, 200
+        else:
+            return {"error": "Invalid challenge solution."}, 400
+    except ValueError as ve:
+        return {"error": str(ve)}, 400
+    except Exception as e:
+        return {"error": "An error occurred while verifying the challenge."}, 500
+
+
+#
+# Register
+#
 @app.route('/v1/auth/register', methods=['POST'])
 def route_register_user():
     username = request.json.get('username')
