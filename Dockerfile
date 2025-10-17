@@ -4,7 +4,7 @@ LABEL authors="In2siders Team <hello@leiuq.fun>"
 WORKDIR /code
 COPY requirements.txt /code
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip3 install -r requirements.txt \
+    pip3 install -r requirements.txt
 
 COPY . /code
 
