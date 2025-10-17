@@ -10,11 +10,10 @@ from packet import BasePacket, PacketFactory
 
 # Databases
 from systems.orm import initialize_db
-from systems.auth import add_user, create_encrypted_data, ensure_unique_username, create_challenge, verify_challenge
+from systems.auth import add_user, ensure_unique_username, create_challenge, verify_challenge
 
 # Others
 import random
-import os
 
 # ============================
 
