@@ -6,12 +6,7 @@ COPY requirements.txt /code
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip3 install -r requirements.txt
 
-COPY . /code
-
-# Remove nginx folder from /code if it exists
-RUN rm -rf /code/nginx
-RUN rm -f /code/Dockerfile
-RUN rm -f /code/docker-compose.yml
+COPY . /code/
 
 # Enviroment
 ENV FLASK_APP main.py
