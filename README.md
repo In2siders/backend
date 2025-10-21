@@ -80,10 +80,32 @@ The frontend and backend communicate through a shared Docker network (`app-netwo
 ## 🔧 Environment Variables
 
 - `FLASK_APP=main.py` - Flask application entry point
-- `FLASK_ENV=production` - Environment mode
+- `FLASK_ENV=production` - Environment mode (use `development` for debug mode)
 - `FLASK_RUN_HOST=0.0.0.0` - Bind to all interfaces
-- `FLASK_RUN_PORT=5000` - Application port
+- `PORT=5000` - Application port (can be changed via environment variable)
 - `BACKEND_URL=http://backend:5000` - Backend URL for frontend
+
+### Changing the Port
+
+The application uses the `PORT` environment variable (defaults to 5000). To run on a different port:
+
+**Using Docker:**
+```bash
+docker run -p 8080:8080 -e PORT=8080 ghcr.io/in2siders/backend:latest
+```
+
+**Using Docker Compose:**
+```yaml
+environment:
+  - PORT=8080
+ports:
+  - "8080:8080"
+```
+
+**Local Development:**
+```bash
+PORT=8080 python main.py
+```
 
 ## 📝 Notes for Frontend Developers
 
