@@ -1,6 +1,16 @@
 __pycache__/
 *.pyc
 *.db
+*.sqlite
+
+.env
+.env*
+.env.*
+!.env.example
 
 .idea/
 /.idea/
+
+
+gnup/*
+!gnup/gnup

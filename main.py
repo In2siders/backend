@@ -1,71 +1,17 @@
 # Flask
-import flask
+from common import app, sio
 from flask import request
 
 from flask_cors import CORS
-import flask_socketio
-
-# Packet
-from packet import BasePacket, PacketFactory
 
 # Databases
 from systems.orm import initialize_db
 from systems.auth import add_user, ensure_unique_username, create_challenge, verify_challenge
-
-# Others
-import random
+from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user
 
 # ============================
 
-app = flask.Flask(__name__)
-sio = flask_socketio.SocketIO(app, cors_allowed_origins="*")
 CORS(app, origins="*")
-
-# Todo esto debberia moverse a Websocket.py
-@sio.on('connect')
-def handle_connect():
-    print('Client connected')
-    # (Manda Packete Hola, Completamente inecesario pero me sirve para testear)
-    welcome_packet = PacketFactory.create('welcome', {'message': 'Connected!'})
-    sio.emit('packet', welcome_packet.to_dict())
-
-
-Decrypted_message = 0
-check = 0
-# Maneja los paquetes entrantes, Solo muestra el tipo el la consola, si quieres usar el contenido, usa "data"
-@sio.on('packet')
-def handle_packet(data):
-    global Decrypted_message
-    global check
-    packet = BasePacket(**data)
-    print(f'Received packet type: {packet.type}')
-    if ( packet.data[0] == 1 and check == 0):
-        print(f'Creando Este weon: {packet.data[1]}');
-        AddUser(packet.data[1], packet.data[2])
-        message = str(random.randint(0, 2000000000))+str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000))+ str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000))
-        Decrypted_message = message
-        print(f'Mensage Secreto para resolver: {message}')
-        import time
-        time.sleep(0.5)
-        mensage_encryptado = GenerateSecretMessage(packet.data[1], message)
-        print(mensage_encryptado)
-        payload = {
-            "challenge": mensage_encryptado
-        }
-        Packete_Challenge = PacketFactory.create('challenge', payload)
-        sio.emit('packet', Packete_Challenge.to_dict())
-        check = 1
-        print(check)
-    if ( packet.data[0] == 2):
-        print(f'Respeusta del Cliente: {packet.data[1]}')
-        if ( packet.data[1] == Decrypted_message):
-            print("Login Correcto")
-            payload = {
-                "answer": mensage_encryptado
-            }
-            Packete_Challenge = PacketFactory.create('chall_response', payload)
-            sio.emit('packet', Packete_Challenge.to_dict())
-    sio.emit('packet', packet.to_dict())
 
 @app.route('/')
 def index():
@@ -125,19 +71,82 @@ def route_verify_challenge():
     solution = request.json.get('solution')
 
     if not challenge_id or not solution:
-        return {"error": "Challenge ID and solution are required."}, 400
+        return {"error": "Challenge ID and solution are required.", "code": "RETO:MISS"}, 400
 
     try:
-        is_valid = verify_challenge(challenge_id, solution)
-        if is_valid:
-            return {"message": "Challenge verified successfully."}, 200
-        else:
-            return {"error": "Invalid challenge solution."}, 400
-    except ValueError as ve:
-        return {"error": str(ve)}, 400
-    except Exception as e:
-        return {"error": "An error occurred while verifying the challenge."}, 500
+        is_valid, db_user = verify_challenge(challenge_id, solution)
+        if not is_valid:
+            return {"error": "Invalid challenge solution.", "code": "RETO:INVALID"}, 400
 
+        # Create session
+        session_id = create_session(user=db_user, request_ip=request.remote_addr)
+
+        return {"message": "Login successful", "data": { "session": session_id }}, 200
+    except ValueError as ve:
+        return {"error": str(ve), "code": "GENERIC:SERVER"}, 400
+    except Exception as e:
+        return {"error": "An error occurred while verifying the challenge.", "code": "GENERIC:SERVER"}, 500
+
+
+#
+# Sessions
+#
+
+# > Check session
+@app.get('/v1/session/check')
+def route_session_get_me():
+    # Get header
+    session_header = request.headers.get('Authorization')
+    if not session_header:
+        return { "error": "No authorization", "code": "AUTH:MISS" }, 401
+
+    # Search database for session
+    db_data = check_session(session_header)
+
+    # Check db_data.ip with request ip
+    user_ip = request.remote_addr
+    if db_data.ip != user_ip:
+        return { "error": "Session not valid", "code": "IP:MISS" }, 403
+
+    # Return user data
+    return { "valid": True }, 200
+
+# > Get user
+@app.get('/v1/session/me')
+def route_get_me():
+    # Get header
+    session_header = request.headers.get('Authorization')
+    if not session_header:
+        return { "error": "No authorization", "code": "AUTH:MISS" }, 401
+
+    # Search database for session
+    db_data = get_user_from_session(session_header)
+
+    if not db_data:
+        return { "error": "Session not valid", "code": "AUTH:INVALID" }, 403
+
+    # Return user data
+    return { "user": db_data.user }, 200
+
+# > Get all sessions (for user)
+@app.get('/v1/session/get')
+def route_get_sessions():
+    # Get header
+    session_header = request.headers.get('Authorization')
+    if not session_header:
+        return { "error": "No authorization", "code": "AUTH:MISS" }, 401
+
+    # Search database for session
+    db_data = get_user_from_session(session_header)
+
+    if not db_data:
+        return { "error": "Session not valid", "code": "AUTH:INVALID" }, 403
+
+    # Return user sessions
+    sessions = get_sessions_for_user(user_id=db_data.user.id)
+    sessions_list = [{"session_fingerprint": s.fingerprint, "ip": s.ip } for s in sessions]
+
+    return { "sessions": sessions_list }, 200
 
 #
 # Register
@@ -157,6 +166,10 @@ def route_register_user():
         return {"message": "User registered successfully."}, 201
     else:
         return {"error": "Failed to register user."}, 500
+
+# ====
+# Run server
+# ====
 
 initialize_db()
 if __name__ == '__main__':
