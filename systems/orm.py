@@ -31,6 +31,7 @@ class Session(BaseModel):
     sessionId = CharField(primary_key=True, default=uuid.uuid4)
     user = ForeignKeyField(User, backref='sessions')
     userIp = IPField()
+    fingerprint = CharField(index=True)
 
 # Group model
 class Group(BaseModel):

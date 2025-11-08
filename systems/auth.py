@@ -1,10 +1,8 @@
-from flask import Flask
 from peewee import *
 from systems.orm import User, Challenge
 from systems.db import db
 import gnupg
 
-app = Flask(__name__)
 gpg = gnupg.GPG(gnupghome='gnup')
 
 def ensure_unique_username(username):

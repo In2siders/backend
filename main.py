@@ -1,71 +1,17 @@
 # Flask
-import flask
+from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, IPMismatchResponse, BadRequestResponse, ServerErrorResponse
 from flask import request
-
 from flask_cors import CORS
-import flask_socketio
-
-# Packet
-from packet import BasePacket, PacketFactory
+from pydantic import BaseModel
 
 # Databases
 from systems.orm import initialize_db
 from systems.auth import add_user, ensure_unique_username, create_challenge, verify_challenge
-
-# Others
-import random
+from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user
 
 # ============================
 
-app = flask.Flask(__name__)
-sio = flask_socketio.SocketIO(app, cors_allowed_origins="*")
 CORS(app, origins="*")
-
-# Todo esto debberia moverse a Websocket.py
-@sio.on('connect')
-def handle_connect():
-    print('Client connected')
-    # (Manda Packete Hola, Completamente inecesario pero me sirve para testear)
-    welcome_packet = PacketFactory.create('welcome', {'message': 'Connected!'})
-    sio.emit('packet', welcome_packet.to_dict())
-
-
-Decrypted_message = 0
-check = 0
-# Maneja los paquetes entrantes, Solo muestra el tipo el la consola, si quieres usar el contenido, usa "data"
-@sio.on('packet')
-def handle_packet(data):
-    global Decrypted_message
-    global check
-    packet = BasePacket(**data)
-    print(f'Received packet type: {packet.type}')
-    if ( packet.data[0] == 1 and check == 0):
-        print(f'Creando Este weon: {packet.data[1]}');
-        AddUser(packet.data[1], packet.data[2])
-        message = str(random.randint(0, 2000000000))+str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000))+ str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000)) + str(random.randint(0, 2000000000))
-        Decrypted_message = message
-        print(f'Mensage Secreto para resolver: {message}')
-        import time
-        time.sleep(0.5)
-        mensage_encryptado = GenerateSecretMessage(packet.data[1], message)
-        print(mensage_encryptado)
-        payload = {
-            "challenge": mensage_encryptado
-        }
-        Packete_Challenge = PacketFactory.create('challenge', payload)
-        sio.emit('packet', Packete_Challenge.to_dict())
-        check = 1
-        print(check)
-    if ( packet.data[0] == 2):
-        print(f'Respeusta del Cliente: {packet.data[1]}')
-        if ( packet.data[1] == Decrypted_message):
-            print("Login Correcto")
-            payload = {
-                "answer": mensage_encryptado
-            }
-            Packete_Challenge = PacketFactory.create('chall_response', payload)
-            sio.emit('packet', Packete_Challenge.to_dict())
-    sio.emit('packet', packet.to_dict())
 
 @app.route('/')
 def index():
@@ -74,9 +20,15 @@ def index():
 #
 # Username Check
 #
-@app.get('/v1/auth/check')
-def route_check_username():
-    username = request.args.get('username')
+class UsernameCheckQuery(BaseModel):
+    username: str
+
+class UsernameCheckResponse(BaseModel):
+    available: bool
+
+@app.get('/v1/auth/check', responses={200: UsernameCheckResponse, 400: {"content": {"application/json": {"example": {"error": "Invalid username."}}}}})
+def route_check_username(query: UsernameCheckQuery = None):
+    username = query.username
     if not username or len(username) < 3:
         return {"error": "Invalid username."}, 400
 
@@ -90,27 +42,35 @@ def route_check_username():
 #
 
 # > Request
-@app.post('/v1/auth/challenge')
-def route_request_challenge():
-    username = request.json.get('username')
+class ChallengeRequestBody(BaseModel):
+    username: str
+
+class ChallengeRequestResponse(BaseModel):
+    challengeId: str
+    challenge: str
+    expires_at: str
+
+@app.post('/v1/auth/challenge', responses={200: ChallengeRequestResponse})
+def route_request_challenge(body: ChallengeRequestBody = None):
+    username = body.username
     if not username or len(username) < 3:
-        return {"error": "Invalid username."}, 400
+        return BadRequestResponse().model_dump(), 400
 
     if ensure_unique_username(username):
-        return {"error": "User not found"}, 400
+        return BadRequestResponse().model_dump(), 400
 
     computed_challenge = create_challenge(username)
     if computed_challenge is None:
-        return {"error": "Failed to create challenge."}, 500
+        return ServerErrorResponse().model_dump(), 500
 
     # Error check
     if isinstance(computed_challenge, str):
         if computed_challenge == "DOES_NOT_EXIST":
-            return {"error": "User does not exist."}, 400
+            return NotFoundResponse().model_dump(), 404
         elif computed_challenge == "INTEGRITY_ERROR":
-            return {"error": "Integrity error occurred."}, 500
+            return ServerErrorResponse(code="ERR:INTEGRITY").model_dump(), 500
         else:
-            return {"error": str(computed_challenge)}, 500
+            return ServerErrorResponse().model_dump(), 500
 
     return {
         "challengeId": computed_challenge["c_id"],
@@ -119,44 +79,135 @@ def route_request_challenge():
     }, 200
 
 # > Verify
-@app.post('/v1/auth/challenge/verify')
-def route_verify_challenge():
-    challenge_id = request.json.get('challengeId')
-    solution = request.json.get('solution')
+class ChallengeVerifyBody(BaseModel):
+    challengeId: str
+    solution: str
+
+class ChallengeVerifyResponse(BaseModel):
+    message: str = "Login successful"
+    data: dict
+
+@app.post('/v1/auth/challenge/verify', responses={200: ChallengeVerifyResponse})
+def route_verify_challenge(body: ChallengeVerifyBody = None):
+    challenge_id = body.challengeId
+    solution = body.solution
 
     if not challenge_id or not solution:
-        return {"error": "Challenge ID and solution are required."}, 400
+        return BadRequestResponse(error="Challenge ID and solution are required.", code="RETO:MISS").model_dump(), 400
 
     try:
-        is_valid = verify_challenge(challenge_id, solution)
-        if is_valid:
-            return {"message": "Challenge verified successfully."}, 200
-        else:
-            return {"error": "Invalid challenge solution."}, 400
-    except ValueError as ve:
-        return {"error": str(ve)}, 400
-    except Exception as e:
-        return {"error": "An error occurred while verifying the challenge."}, 500
+        is_valid, db_user = verify_challenge(challenge_id, solution)
+        if not is_valid:
+            return BadRequestResponse(error="Invalid challenge solution.", code="RETO:INVALID").model_dump(), 400
 
+        # Create session
+        session_id = create_session(user=db_user, request_ip=request.remote_addr)
+
+        return {"message": "Login successful", "data": { "session": session_id }}, 200
+    except ValueError as ve:
+        return BadRequestResponse(error=str(ve)).model_dump(), 400
+    except Exception as e:
+        return ServerErrorResponse().model_dump(), 500
+
+
+#
+# Sessions
+#
+
+# > Check session
+class SessionCheckResponse(BaseModel):
+    valid: bool
+
+@app.get('/v1/session/check', responses={200: SessionCheckResponse})
+def route_session_get_me():
+    # Get header
+    session_header = request.headers.get('Authorization')
+    if not session_header:
+        return { "error": "No authorization", "code": "AUTH:MISS" }, 401
+
+    # Search database for session
+    db_data = check_session(session_header)
+
+    # Check db_data.ip with request ip
+    user_ip = request.remote_addr
+    if db_data.ip != user_ip:
+        return { "error": "Session not valid", "code": "IP:MISS" }, 403
+
+    # Return user data
+    return { "valid": True }, 200
+
+# > Get user
+class SessionGetMeResponse(BaseModel):
+    user: dict
+
+@app.get('/v1/session/me', responses={200: SessionGetMeResponse})
+def route_get_me():
+    # Get header
+    session_header = request.headers.get('Authorization')
+    if not session_header:
+        return UnauthorizedResponse().model_dump(), 401
+
+    # Search database for session
+    db_data = get_user_from_session(session_header)
+
+    if not db_data:
+        return ForbiddenResponse().model_dump(), 403
+
+    # Return user data
+    return SessionGetMeResponse(user=db_data.user).model_dump(), 200
+
+# > Get all sessions (for user)
+class SessionGetSessionsResponse(BaseModel):
+    sessions: list[dict]
+
+@app.get('/v1/session/get', responses={200: SessionGetSessionsResponse})
+def route_get_sessions():
+    # Get header
+    session_header = request.headers.get('Authorization')
+    if not session_header:
+        return UnauthorizedResponse().model_dump(), 401
+
+    # Search database for session
+    db_data = get_user_from_session(session_header)
+
+    if not db_data:
+        return ForbiddenResponse().model_dump(), 403
+
+    # Return user sessions
+    sessions = get_sessions_for_user(user_id=db_data.user.id)
+    sessions_list = [{"session_fingerprint": s.fingerprint, "ip": s.ip } for s in sessions]
+
+    return SessionGetSessionsResponse(sessions=sessions_list).model_dump(), 200
 
 #
 # Register
 #
-@app.route('/v1/auth/register', methods=['POST'])
-def route_register_user():
-    username = request.json.get('username')
-    public_key = request.json.get('pk')
+class RegisterUserBody(BaseModel):
+    username: str
+    pk: str
+
+class RegisterUserResponse(BaseModel):
+    message: str
+
+@app.post('/v1/auth/register', responses={201: RegisterUserResponse})
+def route_register_user(body: RegisterUserBody = None):
+    username = body.username
+    public_key = body.pk
 
     if not username or not public_key:
-        return {"error": "Username and public key are required."}, 400
+        return BadRequestResponse(error="Username and public key are required.").model_dump(), 400
 
     if not ensure_unique_username(username):
-        return {"error": "Username already exists."}, 400
+        return BadRequestResponse(error="Username already exists.").model_dump(), 400
 
     if add_user(username, public_key):
-        return {"message": "User registered successfully."}, 201
+        return RegisterUserResponse(message="User registered successfully.").model_dump(), 201
     else:
-        return {"error": "Failed to register user."}, 500
+        return ServerErrorResponse().model_dump(), 500
+
+# ====
+# Run server
+# ====
 
 initialize_db()
 if __name__ == '__main__':

@@ -1,7 +1,9 @@
 flask-cors
 flask==3.1.2
+flask-openapi3[scalar]==4.3.0
 peewee==3.18.2
 flask_socketio==5.5.1
 python-gnupg==0.5.5
 standard-imghdr==3.13.0
 gunicorn==23.0.0
+pydantic==2.12.3
