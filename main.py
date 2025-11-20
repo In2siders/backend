@@ -13,7 +13,7 @@ from systems.sessions import create_session, check_session, get_user_from_sessio
 
 CORS(app, origins="*")
 
-@app.route('/')
+@app.get('/', responses={200: {"content": {"application/json": {"example": {"message": "WebSocket server is running."}}}}})
 def index():
     return {"message": "WebSocket server is running."}
 
