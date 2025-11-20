@@ -66,13 +66,14 @@ def verify_challenge(challenge_id, solution):
             print("[-] Challenge expired.")
             return False
 
+        user = challenge.user
         challenge.delete_instance()  # Invalidate the challenge after successful verification
-        return True
+        return True, user
     except DoesNotExist:
-        return False
+        return False, None
     except Exception as e:
         print(f"[- ERROR -] Exception during challenge lookup: {e}")
-        return False
+        return False, None
 
 def create_encrypted_data(username, data):
     with db.atomic():

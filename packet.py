@@ -7,10 +7,9 @@ class BasePacket:
     type: str
     timestamp: str
     data: Optional[Any] = None
-    sender_token: Optional[str] = None
 
     def __hash__(self):
-        return hash((self.type, self.timestamp, self.sender_token))
+        return hash((self.type, self.timestamp))
 
     def to_json(self) -> str:
         import json
