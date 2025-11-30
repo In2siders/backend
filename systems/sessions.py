@@ -1,9 +1,8 @@
 import os
 
 from peewee import *
-from systems.orm import User, Session
+from systems.orm import Session
 from systems.db import db
-import gnupg
 from hashlib import sha256, md5
 
 def create_session(user, request_ip):
