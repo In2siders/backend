@@ -10,7 +10,3 @@ __pycache__/
 
 .idea/
 /.idea/
-
-
-gnup/*
-!gnup/gnup
