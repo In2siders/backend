@@ -4,6 +4,9 @@ from flask import request
 from flask_cors import CORS
 from pydantic import BaseModel
 
+# Websocket file
+from wss import wss_app
+
 # Databases
 from systems.orm import initialize_db
 from systems.auth import add_user, ensure_unique_username, create_challenge, verify_challenge
@@ -13,7 +16,7 @@ from systems.sessions import create_session, check_session, get_user_from_sessio
 
 CORS(app, origins="*")
 
-@app.route('/')
+@app.get('/', responses={200: {"content": {"application/json": {"example": {"message": "WebSocket server is running."}}}}})
 def index():
     return {"message": "WebSocket server is running."}
 
@@ -107,6 +110,7 @@ def route_verify_challenge(body: ChallengeVerifyBody = None):
     except ValueError as ve:
         return BadRequestResponse(error=str(ve)).model_dump(), 400
     except Exception as e:
+        print(e)
         return ServerErrorResponse().model_dump(), 500
 
 
@@ -210,6 +214,7 @@ def route_register_user(body: RegisterUserBody = None):
 # ====
 
 initialize_db()
+wss_app(app)
 if __name__ == '__main__':
     sio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
     app.run(host='0.0.0.0', port=5000)

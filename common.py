@@ -36,8 +36,7 @@ class BadRequestResponse(BaseModel):
 class ServerErrorResponse(BaseModel):
     error: str = "Internal Server Error"
     code: str = "SERVER:ERROR"
-    
 
 info = Info(title="In2siders API", version="1.0.0-dev")
 app = OpenAPI(__name__, info=info, security_schemes=security_schemes, doc_ui=True, doc_prefix='/docs', servers=[{"url": "http://localhost:5000", "description": "Local server"}], responses={ 404: NotFoundResponse, 401: UnauthorizedResponse, 403: ForbiddenResponse, 400: BadRequestResponse, 500: ServerErrorResponse })
-sio = flask_socketio.SocketIO(app)
+sio = flask_socketio.SocketIO(manage_session=False, ping_interval=(25, 30), logger=True, engineio_logger=True, cors_allowed_origins="*")
