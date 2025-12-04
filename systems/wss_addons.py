@@ -8,6 +8,7 @@ from flask_socketio import join_room, leave_room
 # sid -> { session: str, user: User, rooms: list }
 
 connected_sessions: dict = {}
+messages: dict = {} # chat_id -> [ message1, message2, ... ]
 
 def check_auth(func):
     def wrapper(*args, **kwargs):

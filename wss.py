@@ -2,12 +2,14 @@ from flask import request
 from common import sio
 from packet import BasePacket, PacketFactory
 from hashlib import md5
+from datetime import datetime
+import os
 
 
 # Use the project's session helpers to validate socket connections
 from systems.orm import User
 from systems.sessions import get_user_from_session
-from systems.wss_addons import check_auth, guarded_join_room, guarded_leave_room, connected_sessions
+from systems.wss_addons import check_auth, guarded_join_room, guarded_leave_room, connected_sessions, messages
 
 
 def get_session_token(_data):
@@ -154,24 +156,37 @@ def ws_on_encryption_request(json_data, sid, user, session):
 @sio.on('message:send')
 @check_auth
 def ws_on_message_send(json_data, sid, user, session):
-    
     chat_id = json_data.get('chat_id') if isinstance(json_data, dict) else None
-    text = json_data.get('text') if isinstance(json_data, dict) else ""
+    body = json_data.get('body') if isinstance(json_data, dict) else ""
     attachments = json_data.get('attachments') if isinstance(json_data, dict) else []
 
-    checksum_payload = f"text={text};attachments={attachments};user={user.id if user.id else user};chat={chat_id}"
+    user_id = user.id if isinstance(user, User) else user
 
-    print(f"[MESSAGE:SEND] From user {sid} in chat {chat_id}: {text} Attachments: {attachments}")
+    checksum_payload = f"body={body};attachments={attachments};user={user_id};chat={chat_id}"
+    print(f"[MESSAGE:SEND] From user {sid} in chat {chat_id}: {body} Attachments: {attachments}")
+
+    if chat_id and chat_id not in messages:
+        messages[chat_id] = []
+
+    msg_obj = {
+        "id": str(len(messages[chat_id]) + 1),
+        "senderId": user_id,
+        "timestamp": datetime.now().timestamp(),
+        "body": body,
+        "attachments": attachments,
+        "_hash": md5(checksum_payload.encode()).hexdigest(),
+    }
+
+    messages[chat_id].append(msg_obj)
+
+    sio.emit("message:proxy", {
+        "_push_id": os.urandom(16).hex(),
+        "message": msg_obj,
+        "_hash": md5(msg_obj.__str__().encode()).hexdigest(),
+    }, to=user_id)
 
     return {
         "success": True,
-        "_id": "push-id-random",
-        "_timestamp": 1700000000,
-        "data": {
-            "body": len(text) if text else 0, # Length of message body
-            "attachments": len(attachments) if attachments else 0, # Length of attachments processed
-            "_checksum": md5(checksum_payload.encode('utf-8')).hexdigest()
-        }
     }
 
 
