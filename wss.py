@@ -38,16 +38,21 @@ def ws_on_connect(auth):
         print("Invalid session token or IP mismatch, disconnecting.")
         return False
 
+    sid = getattr(request, 'sid', None)
+    if not sid:
+        print("No sid available in request, disconnecting.")
+        return False
+
     # Store mapping for later access (join, leave, etc.)
     try:
-        connected_sessions[request.sid] = {"session": session_token, "user": user, "rooms": []}
+        connected_sessions[sid] = {"session": session_token, "user": user, "rooms": []}
     except Exception:
         # If request.sid is not available for some reason, deny the connection
         print("Could not register session for sid, disconnecting.")
         return False
 
     # Print only 10 chars (5 first and 5 last)
-    print(f'User authenticated ({session_token[:5]}...{session_token[-5:]}), connection accepted. sid={request.sid}')
+    print(f'User authenticated ({session_token[:5]}...{session_token[-5:]}), connection accepted. sid={sid}')
     return True
 
 
@@ -62,32 +67,13 @@ def ws_on_disconnect():
 @sio.on('room:join')
 @check_auth
 def ws_on_join_event(json_data, sid, user, session):
-    print(f'Packet for join event!')
+    print('Packet for join event!')
 
-    # Decode packet
-    packet: BasePacket = PacketFactory.from_json(json_data)
-    if not packet:
-        print(f'[DEBUG] Could not decode packet for sid {sid}. Data: {json_data}')
-        return  # No packet created
-
-    print(f'[JOIN] {sid} Packet decoded ({packet.__hash__()})!')
-
-    if not packet.validate():
-        return  # No valid packet
-
-    print(f'[JOIN] {sid} packet validated ({packet.__hash__()})!')
-
-    # IMPORTANT: Removed this type check, as this is a JOIN EVENT handler, this is redundant, client is sending info for this case, not otherwise.
-    # if not packet.is_type('JOIN'):
-    #     return  # No correct packet
-
-    # print(f'[JOIN] {sid} Packet is JOIN type.')
-
-    wanted_room: str | None = packet.data['wanted_room'] if 'wanted_room' in packet.data else None
+    wanted_room: str | None = json_data['room'] if 'room' in json_data else None
 
     if not wanted_room:
         print(f'[JOIN] {sid} came asking for slot on a no data room.')
-        print(f'[DEBUG] Debug info for message up: {packet.__hash__()} | {packet.data}')
+        print(f'[DEBUG] Debug info for message up: {md5(str(json_data).encode()).hexdigest()}')
         return  # No room data
 
     print(f'[JOIN] {sid} asking for slot on room: {wanted_room}')
@@ -97,20 +83,29 @@ def ws_on_join_event(json_data, sid, user, session):
         # Here we should check if the room is valid for this user (i.e., is a direct chat between this user and another one)
         # For simplicity, let's assume all non-group rooms are valid for now.
         print(f'[JOIN] {sid} non-group room requests are always allowed in this demo.') # TODO: Add real checks here.
-        guarded_join_room(sid, wanted_room, connected_sessions)
+        guarded_join_room(sid, wanted_room)
 
     print(f'[JOIN] {sid} joining room: {wanted_room}')
 
-    guarded_join_room(sid, wanted_room, connected_sessions)
+    guarded_join_room(sid, wanted_room)
+
+    return {
+        "success": True,
+        "room": wanted_room,
+        "data": {
+            "messages": messages.get(wanted_room, []),
+        },
+        "_push_id": os.urandom(16).hex(),
+    }
 
 
-@sio.on('room:join')
+@sio.on('room:leave')
 @check_auth
 def ws_on_leave_event(data, sid, user, session):
     # yeah, that's it of login for now. All code for security is on my super secure function 'guarded_leave_room' so, check that on systems.
     room = data.get('room') if isinstance(data, dict) else None
     if room:
-        guarded_leave_room(sid, room, connected_sessions)
+        guarded_leave_room(sid, room)
 
 
 @sio.on('chat:metadata')
@@ -160,7 +155,7 @@ def ws_on_message_send(json_data, sid, user, session):
     body = json_data.get('body') if isinstance(json_data, dict) else ""
     attachments = json_data.get('attachments') if isinstance(json_data, dict) else []
 
-    user_id = user.id if isinstance(user, User) else user
+    user_id = str(getattr(user, 'userId', 'server'))
 
     checksum_payload = f"body={body};attachments={attachments};user={user_id};chat={chat_id}"
     print(f"[MESSAGE:SEND] From user {sid} in chat {chat_id}: {body} Attachments: {attachments}")
@@ -183,7 +178,7 @@ def ws_on_message_send(json_data, sid, user, session):
         "_push_id": os.urandom(16).hex(),
         "message": msg_obj,
         "_hash": md5(msg_obj.__str__().encode()).hexdigest(),
-    }, to=user_id)
+    }, to=sid)
 
     return {
         "success": True,

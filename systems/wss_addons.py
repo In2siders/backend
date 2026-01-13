@@ -16,16 +16,20 @@ def check_auth(func):
         if not sid or sid not in connected_sessions:
             print("Attempt to access authenticated event from unauthenticated sid, ignoring.")
             return
-        return func(*args, **kwargs, sid=sid, user=connected_sessions[sid]['user'], session=connected_sessions[sid]['session'])
+        
+        user = connected_sessions[sid]['user']
+        session = connected_sessions[sid]['session']
+        return func(*args, **kwargs, sid=sid, user=user, session=session)
     
     return wrapper
 
 def guarded_join_room(sid, room) -> bool:
-    from flask import request
-    from common import sio
-
     if not sid or sid not in connected_sessions:
         print("No sid provided for join_room, cannot proceed.")
+        return False
+
+    if room in connected_sessions[sid]['rooms']:
+        print(f"[GUARDED JOIN] sid={sid} room={room} joined=False error=ALREADY_IN_ROOM guard_hit=True")
         return False
 
     try:
@@ -38,9 +42,6 @@ def guarded_join_room(sid, room) -> bool:
         return False
 
 def guarded_leave_room(sid, room) -> bool:
-    from flask import request
-    from common import sio
-
     if not sid or sid not in connected_sessions:
         print("No sid provided for leave_room, cannot proceed.")
         return False

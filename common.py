@@ -76,7 +76,7 @@ app = OpenAPI(
 sio = flask_socketio.SocketIO(
     manage_session=False,
     ping_interval=(25, 30),
-    logger=True,
-    engineio_logger=True,
+    logger=False,
+    engineio_logger=False,
     cors_allowed_origins="*"
     )
