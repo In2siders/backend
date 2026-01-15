@@ -11,11 +11,13 @@ class BaseModel(Model):
 # ORM Structures
 # ==============
 
+# TODO: Create a table called 'PublicKeys' to store user public_keys, being id as keywords of 9 characters and with a fk to userId.
+
 # User model
 class User(BaseModel):
     userId      = UUIDField(primary_key=True, default=uuid.uuid4) # User unique ID
     username    = CharField(unique=True) # User unique username
-    pub_key     = CharField(index=True) # User unique public key
+    pub_key     = TextField(index=True) # User unique public key
     bio         = TextField(default="No bio yet!") # TODO: DO NOT IMPLEMENT YET.
     canLogin    = BooleanField(default=True)
 

@@ -13,3 +13,6 @@ __pycache__/
 
 gnup/
 !gnup/gnup
+
+.venv/
+venv/
