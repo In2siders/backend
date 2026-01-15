@@ -102,13 +102,16 @@ def route_verify_challenge(body: ChallengeVerifyBody):
         return BadRequestResponse(error="Challenge ID and solution are required.", code="RETO:MISS").model_dump(), 400
 
     try:
+        print(f"Verifying challenge: challenge_id={challenge_id}, solution={solution}")
         is_valid, db_user = verify_challenge(challenge_id, solution)
         if not is_valid:
             return BadRequestResponse(error="Invalid challenge solution.", code="RETO:INVALID").model_dump(), 400
 
         # Create session
+        print(f"Creating session for user: {db_user.__getattribute__('username')}")
         session_id = create_session(user=db_user, request_ip=request.remote_addr)
 
+        print(f"Session created: {session_id}")
         return {"message": "Login successful", "data": { "session": session_id }}, 200
     except ValueError as ve:
         return BadRequestResponse(error=str(ve)).model_dump(), 400
