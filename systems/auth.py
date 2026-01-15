@@ -51,18 +51,16 @@ def create_challenge(username, length=32):
             return e
 
 def verify_challenge(challenge_id, solution):
-    from datetime import datetime, UTC
+    from datetime import datetime
 
     try:
         challenge = (Challenge.select()
                      .where(Challenge.challengeId == challenge_id)
                      .where(Challenge.solution == solution).get())
         expires_str = challenge.expires_at
-        if expires_str.endswith('Z'):
-            expires_str = expires_str.replace('Z', '+00:00')
-
+        
         expires_dt = datetime.fromisoformat(expires_str)
-        if expires_dt < datetime.now(UTC):
+        if expires_dt < datetime.now():
             print("[-] Challenge expired.")
             return False, None
 
