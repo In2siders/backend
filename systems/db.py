@@ -1,3 +1,5 @@
-from peewee import SqliteDatabase
+from os import getenv
+from peewee import SqliteDatabase, PostgresqlDatabase
 
-db = SqliteDatabase('dev.db')
+db_uri = getenv('PGDB_CONNECTION')
+db = PostgresqlDatabase(db_uri)

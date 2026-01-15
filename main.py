@@ -1,3 +1,6 @@
+# Dotenv
+from dotenv import load_dotenv
+
 # Flask
 from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, IPMismatchResponse, BadRequestResponse, ServerErrorResponse
 from flask import request
@@ -30,7 +33,7 @@ class UsernameCheckResponse(BaseModel):
     available: bool
 
 @app.get('/v1/auth/check', responses={200: UsernameCheckResponse, 400: {"content": {"application/json": {"example": {"error": "Invalid username."}}}}})
-def route_check_username(query: UsernameCheckQuery = None):
+def route_check_username(query: UsernameCheckQuery):
     username = query.username
     if not username or len(username) < 3:
         return {"error": "Invalid username."}, 400
@@ -54,7 +57,7 @@ class ChallengeRequestResponse(BaseModel):
     expires_at: str
 
 @app.post('/v1/auth/challenge', responses={200: ChallengeRequestResponse})
-def route_request_challenge(body: ChallengeRequestBody = None):
+def route_request_challenge(body: ChallengeRequestBody):
     username = body.username
     if not username or len(username) < 3:
         return BadRequestResponse().model_dump(), 400
@@ -75,10 +78,10 @@ def route_request_challenge(body: ChallengeRequestBody = None):
         else:
             return ServerErrorResponse().model_dump(), 500
 
-    return {
-        "challengeId": computed_challenge["c_id"],
-        "challenge": computed_challenge["challenge"],
-        "expires_at": computed_challenge["expires_at"]
+    return { # we ignore the type cuz i know shit is happening here
+        "challengeId": computed_challenge.get("c_id"), # type: ignore
+        "challenge": computed_challenge.get("challenge"), # type: ignore
+        "expires_at": computed_challenge.get("expires_at") # type: ignore
     }, 200
 
 # > Verify
@@ -91,7 +94,7 @@ class ChallengeVerifyResponse(BaseModel):
     data: dict
 
 @app.post('/v1/auth/challenge/verify', responses={200: ChallengeVerifyResponse})
-def route_verify_challenge(body: ChallengeVerifyBody = None):
+def route_verify_challenge(body: ChallengeVerifyBody):
     challenge_id = body.challengeId
     solution = body.solution
 
@@ -134,7 +137,7 @@ def route_session_get_me():
 
     # Check db_data.ip with request ip
     user_ip = request.remote_addr
-    if db_data.ip != user_ip:
+    if db_data.ip != user_ip: # type: ignore
         return { "error": "Session not valid", "code": "IP:MISS" }, 403
 
     # Return user data
@@ -194,7 +197,7 @@ class RegisterUserResponse(BaseModel):
     message: str
 
 @app.post('/v1/auth/register', responses={201: RegisterUserResponse})
-def route_register_user(body: RegisterUserBody = None):
+def route_register_user(body: RegisterUserBody):
     username = body.username
     public_key = body.pk
 
@@ -212,7 +215,7 @@ def route_register_user(body: RegisterUserBody = None):
 # ====
 # Run server
 # ====
-
+load_dotenv()
 initialize_db()
 wss_app(app)
 if __name__ == '__main__':
