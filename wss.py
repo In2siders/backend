@@ -16,7 +16,7 @@ def ws_on_connect(auth):
 
     if not session_token:
         print("No session token provided, disconnecting.") # Okay, print not works, so, let's try to send the message in another way
-        sio.emit('error', {'message': 'No session token provided.'}, to=request.__getattribute__('sid'))
+        sio.emit('error', {'message': 'No session token provided.'})
         return False
 
     # Validate session against our DB, checking the remote IP for extra safety
@@ -24,18 +24,18 @@ def ws_on_connect(auth):
     try:
         user = get_user_from_session(session_token, request.remote_addr)
     except Exception as e:
-        sio.emit('error', {'message': f'Error {e}.'}, to=request.__getattribute__('sid'))
+        sio.emit('error', {'message': f'Error {e}.'})
         return False
 
     if not user:
         print("Invalid session token or IP mismatch, disconnecting.")
-        sio.emit('error', {'message': 'Invalid session token or IP mismatch.'}, to=request.__getattribute__('sid'))
+        sio.emit('error', {'message': 'Invalid session token or IP mismatch.'})
         return False
 
     sid = getattr(request, 'sid', None)
     if not sid:
         print("No sid available in request, disconnecting.")
-        sio.emit('error', {'message': 'No sid available in request.'}, to=request.__getattribute__('sid'))
+        sio.emit('error', {'message': 'No sid available in request.'})
         return False
 
     # Store mapping for later access (join, leave, etc.)
@@ -44,7 +44,7 @@ def ws_on_connect(auth):
     except Exception:
         # If request.sid is not available for some reason, deny the connection
         print("Could not register session for sid, disconnecting.")
-        sio.emit('error', {'message': 'Could not register session for sid.'}, to=request.__getattribute__('sid'))
+        sio.emit('error', {'message': 'Could not register session for sid.'})
         return False
 
     return True
