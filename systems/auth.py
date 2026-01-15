@@ -1,4 +1,4 @@
-from peewee import *
+from peewee import DoesNotExist, IntegrityError
 from systems.orm import User, Challenge
 from systems.db import db
 import gnupg
@@ -24,10 +24,10 @@ def add_user(username, pk):
 def create_challenge(username, length=32):
     import os
     import binascii
-    from datetime import datetime, timedelta, UTC
+    from datetime import datetime, timedelta
 
     plainChallenge = binascii.hexlify(os.urandom(length)).decode()
-    expires_at = (datetime.now(UTC) + timedelta(minutes=1)).isoformat()
+    expires_at = (datetime.now() + timedelta(minutes=1)).isoformat()
 
     with db.atomic():
         try:
@@ -64,7 +64,7 @@ def verify_challenge(challenge_id, solution):
         expires_dt = datetime.fromisoformat(expires_str)
         if expires_dt < datetime.now(UTC):
             print("[-] Challenge expired.")
-            return False
+            return False, None
 
         user = challenge.user
         challenge.delete_instance()  # Invalidate the challenge after successful verification
