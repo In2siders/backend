@@ -1,3 +1,6 @@
+# Dotenv
+from dotenv import load_dotenv
+
 # Flask
 from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, IPMismatchResponse, BadRequestResponse, ServerErrorResponse
 from flask import request
@@ -75,10 +78,10 @@ def route_request_challenge(body: ChallengeRequestBody):
         else:
             return ServerErrorResponse().model_dump(), 500
 
-    return {
-        "challengeId": computed_challenge["c_id"],
-        "challenge": computed_challenge["challenge"],
-        "expires_at": computed_challenge["expires_at"]
+    return { # we ignore the type cuz i know shit is happening here
+        "challengeId": computed_challenge.get("c_id"), # type: ignore
+        "challenge": computed_challenge.get("challenge"), # type: ignore
+        "expires_at": computed_challenge.get("expires_at") # type: ignore
     }, 200
 
 # > Verify
@@ -134,7 +137,7 @@ def route_session_get_me():
 
     # Check db_data.ip with request ip
     user_ip = request.remote_addr
-    if db_data.ip != user_ip:
+    if db_data.ip != user_ip: # type: ignore
         return { "error": "Session not valid", "code": "IP:MISS" }, 403
 
     # Return user data
@@ -212,7 +215,7 @@ def route_register_user(body: RegisterUserBody):
 # ====
 # Run server
 # ====
-
+load_dotenv()
 initialize_db()
 wss_app(app)
 if __name__ == '__main__':
