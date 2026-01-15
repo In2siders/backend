@@ -1,21 +1,13 @@
+from logging import log
 from flask import request
 from common import sio
-from packet import BasePacket, PacketFactory
 from hashlib import md5
 from datetime import datetime
 import os
 
-
 # Use the project's session helpers to validate socket connections
-from systems.orm import User
 from systems.sessions import get_user_from_session
 from systems.wss_addons import check_auth, guarded_join_room, guarded_leave_room, connected_sessions, messages
-
-
-def get_session_token(_data):
-    session_token = _data['session'] if 'session' in _data else None
-    return session_token
-
 
 @sio.on('connect')
 def ws_on_connect(auth):
@@ -31,6 +23,7 @@ def ws_on_connect(auth):
     try:
         user = get_user_from_session(session_token, request.remote_addr)
     except Exception as e:
+        log(10, f"Exception while validating session: {e}")
         print(f"Error while validating session: {e}")
         return False
 
