@@ -1,6 +1,6 @@
 import os
 
-from peewee import *
+from peewee import DoesNotExist
 from systems.orm import Session
 from systems.db import db
 from hashlib import sha256, md5
@@ -55,7 +55,7 @@ def invalidate_session(session_id, session_fingerprint):
             request_session = check_session(session_id)
             session_target = Session.select().where(Session.fingerprint == session_fingerprint).get()
 
-            if request_session.user != session_target.user:
+            if request_session.__getattribute__('user') != session_target.user:
                 return False
 
             session_target.delete_instance()
