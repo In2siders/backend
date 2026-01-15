@@ -37,12 +37,12 @@ def get_user_from_session(session_id, request_ip=None):
     session = check_session(session_id)
 
     if request_ip and session and session.userIp != request_ip:
-        return None
+        return None, f"IP Missmatch: session IP {session.userIp} vs request IP {request_ip}"
 
     if session:
-        return session.user
+        return session.user, None
 
-    return None
+    return None, "Session does not exist"
 
 def get_sessions_for_user(user_id):
     with db.atomic():

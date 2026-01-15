@@ -159,7 +159,7 @@ def route_get_me():
         return UnauthorizedResponse().model_dump(), 401
 
     # Search database for session
-    db_data = get_user_from_session(session_header)
+    db_data, err = get_user_from_session(session_header)
 
     if not db_data:
         return ForbiddenResponse().model_dump(), 403
@@ -179,7 +179,7 @@ def route_get_sessions():
         return UnauthorizedResponse().model_dump(), 401
 
     # Search database for session
-    db_data = get_user_from_session(session_header)
+    db_data, err = get_user_from_session(session_header)
 
     if not db_data:
         return ForbiddenResponse().model_dump(), 403

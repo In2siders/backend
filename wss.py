@@ -21,15 +21,15 @@ def ws_on_connect(auth):
 
     # Validate session against our DB, checking the remote IP for extra safety
     user = None
+    err = "Not specified"
     try:
-        user = get_user_from_session(session_token, request.remote_addr)
+        user, err = get_user_from_session(session_token, request.remote_addr)
     except Exception as e:
         sio.emit('error', {'message': f'Error {e}.'})
         return False
 
     if not user:
-        print("Invalid session token or IP mismatch, disconnecting.")
-        sio.emit('error', {'message': 'Invalid session token or IP mismatch.'})
+        sio.emit('error', {'message': f'Invalid session token or IP mismatch: {err}.'})
         return False
 
     sid = getattr(request, 'sid', None)
