@@ -30,7 +30,7 @@ class UsernameCheckResponse(BaseModel):
     available: bool
 
 @app.get('/v1/auth/check', responses={200: UsernameCheckResponse, 400: {"content": {"application/json": {"example": {"error": "Invalid username."}}}}})
-def route_check_username(query: UsernameCheckQuery = None):
+def route_check_username(query: UsernameCheckQuery):
     username = query.username
     if not username or len(username) < 3:
         return {"error": "Invalid username."}, 400
@@ -54,7 +54,7 @@ class ChallengeRequestResponse(BaseModel):
     expires_at: str
 
 @app.post('/v1/auth/challenge', responses={200: ChallengeRequestResponse})
-def route_request_challenge(body: ChallengeRequestBody = None):
+def route_request_challenge(body: ChallengeRequestBody):
     username = body.username
     if not username or len(username) < 3:
         return BadRequestResponse().model_dump(), 400
@@ -91,7 +91,7 @@ class ChallengeVerifyResponse(BaseModel):
     data: dict
 
 @app.post('/v1/auth/challenge/verify', responses={200: ChallengeVerifyResponse})
-def route_verify_challenge(body: ChallengeVerifyBody = None):
+def route_verify_challenge(body: ChallengeVerifyBody):
     challenge_id = body.challengeId
     solution = body.solution
 
@@ -194,7 +194,7 @@ class RegisterUserResponse(BaseModel):
     message: str
 
 @app.post('/v1/auth/register', responses={201: RegisterUserResponse})
-def route_register_user(body: RegisterUserBody = None):
+def route_register_user(body: RegisterUserBody):
     username = body.username
     public_key = body.pk
 
