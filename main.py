@@ -110,7 +110,7 @@ def route_verify_challenge(body: ChallengeVerifyBody):
 
         # Create session
         print(f"Creating session for user: {db_user.__getattribute__('username')}")
-        session_id = create_session(user=db_user, request_ip="127.0.0.1")
+        session_id = create_session(user=db_user, request_ip=request.remote_addr)
 
         print(f"Session created: {session_id}")
         return {"message": "Login successful", "data": { "session": session_id }}, 200
