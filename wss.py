@@ -86,9 +86,7 @@ def ws_on_join_event(json_data, sid, user, session):
     return {
         "success": True,
         "room": wanted_room,
-        "data": {
-            "messages": messages.get(wanted_room, []),
-        },
+        "data":  messages.get(wanted_room, []),
         "_push_id": os.urandom(16).hex(),
     }
 

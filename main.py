@@ -59,6 +59,9 @@ class ChallengeRequestResponse(BaseModel):
 @app.post('/v1/auth/challenge', responses={200: ChallengeRequestResponse})
 def route_request_challenge(body: ChallengeRequestBody):
     username = body.username
+
+    print(username)
+
     if not username or len(username) < 3:
         return BadRequestResponse().model_dump(), 400
 
@@ -95,7 +98,6 @@ class ChallengeVerifyResponse(BaseModel):
 
 @app.post('/v1/auth/challenge/verify', responses={200: ChallengeVerifyResponse})
 def route_verify_challenge(body: ChallengeVerifyBody):
-    print("aaaaa me duele")
     challenge_id = body.challengeId
     solution = body.solution
 
