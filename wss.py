@@ -143,37 +143,50 @@ def ws_on_encryption_request(json_data, sid, user, session):
 @sio.on('message:send')
 @check_auth
 def ws_on_message_send(json_data, sid, user, session):
-    chat_id = json_data.get('chat_id') if isinstance(json_data, dict) else None
-    body = json_data.get('body') if isinstance(json_data, dict) else ""
-    attachments = json_data.get('attachments') if isinstance(json_data, dict) else []
+    chat_id = json_data.get('chat_id')
+    body = json_data.get('body', "")
+    
+    user_id = str(user.userId) # Ensure this matches your user object structure
 
-    user_id = str(getattr(user, 'userId', 'server'))
-
-    checksum_payload = f"body={body};attachments={attachments};user={user_id};chat={chat_id}"
-    print(f"[MESSAGE:SEND] From user {sid} in chat {chat_id}: {body} Attachments: {attachments}")
-
-    if chat_id and chat_id not in messages:
-        messages[chat_id] = []
-
+    # Create the official message object
     msg_obj = {
-        "id": str(len(messages[chat_id]) + 1),
+        "id": os.urandom(8).hex(), # Unique ID for this message
         "senderId": user_id,
         "timestamp": datetime.now().timestamp(),
         "body": body,
-        "attachments": attachments,
-        "_hash": md5(checksum_payload.encode()).hexdigest(),
+        "_hash": md5(f"{user_id}{body}{datetime.now()}".encode()).hexdigest(),
     }
 
+    if chat_id not in messages:
+        messages[chat_id] = []
     messages[chat_id].append(msg_obj)
 
+    # Broadcast ONLY to the specific room
     sio.emit("message:proxy", {
-        "_push_id": os.urandom(16).hex(),
+        "_push_id": msg_obj["id"],
         "message": msg_obj,
-        "_hash": md5(msg_obj.__str__().encode()).hexdigest(),
-    }, to=sid)
+        "_hash": msg_obj["_hash"],
+    }, room=chat_id)
+
+    return {"success": True}
+
+@sio.on('message:update')
+@check_auth
+def ws_on_message_update(json_data, sid, user, session):
+    print('Packet for chat update event!')
+
+    wanted_room: str | None = json_data['room'] if 'room' in json_data else None
+
+    if not wanted_room:
+        print(f'[MESSAGE] {sid} We Lowkenuelly dont have the chatroom bronchacho, go fix it.')
+        print(f'[DEBUG] Debug info for message up: {md5(str(json_data).encode()).hexdigest()}')
+        return  # No room data
 
     return {
         "success": True,
+        "room": wanted_room,
+        "data":  messages.get(wanted_room, []),
+        "_push_id": os.urandom(16).hex(),
     }
 
 
