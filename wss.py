@@ -147,11 +147,12 @@ def ws_on_message_send(json_data, sid, user, session):
     body = json_data.get('body', "")
     
     user_id = str(user.userId) # Ensure this matches your user object structure
-
+    username = str(user.username) 
     # Create the official message object
     msg_obj = {
         "id": os.urandom(8).hex(), # Unique ID for this message
         "senderId": user_id,
+        "username": username,
         "timestamp": datetime.now().timestamp(),
         "body": body,
         "_hash": md5(f"{user_id}{body}{datetime.now()}".encode()).hexdigest(),
