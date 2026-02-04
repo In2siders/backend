@@ -178,16 +178,16 @@ def route_get_me():
     # Accept session id either in Authorization header or in the i2session cookie
     session_header = request.cookies.get('i2session')
     if not session_header:
-        return { "user": None }, 200
+        return { "user": None, "error": "No authorization", "code": "AUTH:MISS" }, 200
 
     # Search database for session
     db_data, err = get_user_from_session(session_header)
 
     if not db_data:
-        return { "user": None }, 200
+        return { "user": None, "error": "Session not valid", "code": "SESSION:MISS" }, 200
 
     # Return user data
-    return SessionGetMeResponse(user=db_data.user).model_dump(), 200
+    return SessionGetMeResponse(user=db_data).model_dump(), 200
 
 # > Get all sessions (for user)
 class SessionGetSessionsResponse(BaseModel):
