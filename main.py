@@ -154,7 +154,7 @@ class SessionCheckResponse(BaseModel):
 @app.get('/v1/session/check', responses={200: SessionCheckResponse})
 def route_session_get_me():
     # Accept session id either in Authorization header or in the i2session cookie
-    session_header = request.headers.get('Authorization') or request.cookies.get('i2session')
+    session_header = request.cookies.get('i2session')
     if not session_header:
         return { "error": "No authorization", "code": "AUTH:MISS" }, 401
 
@@ -176,7 +176,7 @@ class SessionGetMeResponse(BaseModel):
 @app.get('/v1/session/me', responses={200: SessionGetMeResponse})
 def route_get_me():
     # Accept session id either in Authorization header or in the i2session cookie
-    session_header = request.headers.get('Authorization') or request.cookies.get('i2session')
+    session_header = request.cookies.get('i2session')
     if not session_header:
         return { "user": None }, 200
 
@@ -196,7 +196,7 @@ class SessionGetSessionsResponse(BaseModel):
 @app.get('/v1/session/get', responses={200: SessionGetSessionsResponse})
 def route_get_sessions():
     # Accept session id either in Authorization header or in the i2session cookie
-    session_header = request.headers.get('Authorization') or request.cookies.get('i2session')
+    session_header = request.cookies.get('i2session')
     if not session_header:
         return UnauthorizedResponse().model_dump(), 401
 
@@ -216,7 +216,7 @@ def route_get_sessions():
 @app.get('/v1/session/logout', responses={204: None })
 def route_logout():
     # Accept session id either in Authorization header or in the i2session cookie
-    session_header = request.headers.get('Authorization') or request.cookies.get('i2session')
+    session_header = request.cookies.get('i2session')
     if not session_header:
         return { "error": "No authorization", "code": "AUTH:MISS" }, 401
 
