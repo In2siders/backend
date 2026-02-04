@@ -125,9 +125,9 @@ def route_verify_challenge(body: ChallengeVerifyBody):
                      value=session_id,
                      httponly=True,
                      samesite='Lax',
-                     secure=(app.config['ENV'] == 'production'),
+                     secure=True,
                      max_age=30*24*60*60,
-                     domain=".in2siders.com" if app.config['ENV'] == 'production' else None,
+                     domain=".in2siders.com",
                      path="/",
                      ) # 30 days
         r.status_code = 200
@@ -233,9 +233,9 @@ def route_logout():
                  value='',
                  httponly=True,
                  samesite='Lax',
-                 secure=(app.config['ENV'] == 'production'),
+                 secure=True,
                  max_age=0,
-                 domain=".in2siders.com" if app.config['ENV'] == 'production' else None,
+                 domain=".in2siders.com",
                  path="/",
                  ) # Delete cookie
     r.status_code = 204
