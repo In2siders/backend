@@ -195,9 +195,26 @@ def route_get_me():
 
     if not db_data:
         return { "user": None, "error": "Session not valid", "code": "SESSION:MISS" }, 200
+    # Build a JSON-serializable user object with minimal, safe fields.
+    user_obj = None
+    try:
+        u = getattr(db_data, 'user', None) or getattr(db_data, 'User', None) or db_data
+        uid = getattr(u, 'userId', None) or getattr(u, 'id', None) or getattr(u, 'userid', None)
+        username = getattr(u, 'username', None) or getattr(u, 'name', None)
+        bio = getattr(u, 'bio', None) if hasattr(u, 'bio') else None
+
+        user_obj = {
+            'id': uid,
+            'username': username,
+        }
+        if bio is not None:
+            user_obj['bio'] = bio
+    except Exception:
+        # Fallback: return minimal info if introspection fails
+        user_obj = { 'id': None, 'username': None }
 
     # Return user data
-    return SessionGetMeResponse(user=db_data.__dict__).model_dump(), 200
+    return SessionGetMeResponse(user=user_obj).model_dump(), 200
 
 # > Get all sessions (for user)
 class SessionGetSessionsResponse(BaseModel):
