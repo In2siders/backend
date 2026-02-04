@@ -18,11 +18,14 @@ def ws_on_connect(auth):
     orm_models = orm_get_all_models()
 
     # Get session token from the connection "auth" payload
-    session_token = auth['token'] if auth and 'token' in auth else None
+    session_token = auth['token'] if auth and 'token' in auth else request.cookies.get('i2session') if request.cookies.get('i2session') else None
 
     if not session_token:
-        print("No session token provided, disconnecting.") # Okay, print not works, so, let's try to send the message in another way
-        sio.emit('error', {'message': 'No session token provided.'})
+        print("No session token provided on connect, disconnecting.")
+        try:
+            sio.emit('error', {'message': 'No session token provided.'})
+        except Exception:
+            pass
         return False
 
     # Validate session against our DB, checking the remote IP for extra safety
