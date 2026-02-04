@@ -119,10 +119,10 @@ def route_verify_challenge(body: ChallengeVerifyBody):
         if not session_id:
             return ServerErrorResponse().model_dump(), 500
 
-        r = make_response(jsonify({ "succes": True, "message": "Welcome back!", "data": { "session": session_id, "user":  {
+        r = make_response({ "succes": True, "message": "Welcome back!", "data": { "session": session_id, "user":  {
             "id": db_user.__getattribute__('userId') or db_user.__getattribute__('id') or db_user.__getattribute__('userid'), # idk how it's named exactly
             "username": db_user.__getattribute__('username'),
-        } }}))
+        } }})
 
         r.set_cookie('i2session',
                      value=session_id,
