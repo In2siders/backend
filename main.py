@@ -203,6 +203,8 @@ def route_get_me():
         username = getattr(u, 'username', None) or getattr(u, 'name', None)
         bio = getattr(u, 'bio', None) if hasattr(u, 'bio') else None
 
+        print(f"Your ip: {request.remote_addr} | Session ip: {db_data.ip}") # type: ignore
+
         user_obj = {
             'id': uid,
             'username': username,

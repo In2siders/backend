@@ -18,7 +18,7 @@ def ws_on_connect(auth):
     orm_models = orm_get_all_models()
 
     # Get session token from the connection "auth" payload
-    session_token = auth['token'] if auth and 'token' in auth else request.cookies.get('i2session') if request.cookies.get('i2session') else None
+    session_token = request.cookies.get('i2session') if request.cookies.get('i2session') else None
 
     if not session_token:
         print("No session token provided on connect, disconnecting.")
@@ -33,6 +33,7 @@ def ws_on_connect(auth):
     err = "Not specified"
     try:
         user, err = get_user_from_session(session_token, request.remote_addr)
+        print(f"req ip: {request.remote_addr}")
     except Exception as e:
         sio.emit('error', {'message': f'Error {e}.'})
         return False
