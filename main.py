@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 # Flask
 from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, IPMismatchResponse, BadRequestResponse, ServerErrorResponse
-from flask import request, jsonify, make_response
+from flask import request, make_response
 from flask_cors import CORS
 from pydantic import BaseModel
 
@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from wss import wss_app
 
 # Databases
-from systems.orm import initialize_db
+from systems.orm import User, initialize_db
 from systems.auth import add_user, ensure_unique_username, create_challenge, verify_challenge
 from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user, invalidate_session
 
@@ -163,7 +163,7 @@ def route_session_get_me():
 
 # > Get user
 class SessionGetMeResponse(BaseModel):
-    user: dict | None
+    user: User | None
     error: str | None = None
     code: str | None = None
 
