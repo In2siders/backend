@@ -175,13 +175,13 @@ def route_get_me():
     # Accept session id either in Authorization header or in the i2session cookie
     session_header = request.headers.get('Authorization') or request.cookies.get('i2session')
     if not session_header:
-        return UnauthorizedResponse().model_dump(), 401
+        return { "user": None }, 200
 
     # Search database for session
     db_data, err = get_user_from_session(session_header)
 
     if not db_data:
-        return ForbiddenResponse().model_dump(), 403
+        return { "user": None }, 200
 
     # Return user data
     return SessionGetMeResponse(user=db_data.user).model_dump(), 200
