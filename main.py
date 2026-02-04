@@ -17,8 +17,23 @@ from systems.sessions import create_session, check_session, get_user_from_sessio
 
 # ============================
 
-# Check production mode
-CORS(app, supports_credentials=True,origins=["https://in2siders.app", "https://*.in2siders.app"])
+import os
+
+# Configure CORS origins from environment or defaults. When credentials are used,
+# browsers require explicit origins (wildcard '*' is not allowed with credentials).
+cors_origins_env = os.getenv('CORS_ORIGINS')
+if cors_origins_env:
+    origins_list = [o.strip() for o in cors_origins_env.split(',') if o.strip()]
+else:
+    origins_list = [
+        "https://in2siders.app",
+        "https://www.in2siders.app",
+        "https://api.in2siders.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ]
+
+CORS(app, supports_credentials=True, origins=origins_list)
 
 @app.get('/', responses={200: {"content": {"application/json": {"example": {"message": "WebSocket server is running."}}}}})
 def index():
