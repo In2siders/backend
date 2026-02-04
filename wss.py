@@ -15,6 +15,8 @@ from systems.orm import orm_get_all_models
 
 @sio.on('connect')
 def ws_on_connect(auth):
+    orm_models = orm_get_all_models()
+
     # Get session token from the connection "auth" payload
     session_token = auth['token'] if auth and 'token' in auth else None
 
@@ -50,6 +52,29 @@ def ws_on_connect(auth):
         print("Could not register session for sid, disconnecting.")
         sio.emit('error', {'message': 'Could not register session for sid.'})
         return False
+
+    # Load DB to cache
+    seen_chats = set() # Track which rooms we've cleared during this loop
+    
+    for message in orm_models[5].select():
+        c_id = str(message.chatid) # Keep it as a string to match room:join
+        
+        # If this is the first time we see this chat_id in THIS loop, clear it
+        if c_id not in seen_chats:
+            messages[c_id] = [] 
+            seen_chats.add(c_id)
+    
+        msg_obj = {
+            # Use the DB primary key if possible to keep IDs consistent
+            "id": str(message.id) if hasattr(message, 'id') else os.urandom(8).hex(), 
+            "senderId": str(message.sender.userId),
+            "username": message.sender.username,
+            "timestamp": message.timestamp,
+            "body": message.body,
+            "_hash": "Test",
+        }
+        
+        messages[c_id].append(msg_obj)
 
     return True
 
