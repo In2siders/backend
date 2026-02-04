@@ -61,12 +61,13 @@ class Message(BaseModel):
     body = TextField() # Encrypted message body
     sender = ForeignKeyField(User, backref='sent_messages')
     timestamp = CharField() # Timestamp of the message
+    chatid = TextField()
 
 # Message transport
 class MessageTransport(BaseModel):
     message = ForeignKeyField(Message, backref='transports')
     source = ForeignKeyField(User, backref='sent_transports', null=True)
-    target = ForeignKeyField(User, backref='received_messages', null=True)
+    target = TextField()
 
     class Meta:
         primary_key = False

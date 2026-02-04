@@ -3,11 +3,15 @@ from flask import request
 from common import sio
 from hashlib import md5
 from datetime import datetime
+from systems.db import db
 import os
+
 
 # Use the project's session helpers to validate socket connections
 from systems.sessions import get_user_from_session
 from systems.wss_addons import check_auth, guarded_join_room, guarded_leave_room, connected_sessions, messages
+
+from systems.orm import orm_get_all_models
 
 @sio.on('connect')
 def ws_on_connect(auth):
@@ -139,18 +143,18 @@ def ws_on_encryption_request(json_data, sid, user, session):
     
     return
 
-
 @sio.on('message:send')
 @check_auth
 def ws_on_message_send(json_data, sid, user, session):
+    orm_models = orm_get_all_models()
     chat_id = json_data.get('chat_id')
     body = json_data.get('body', "")
     
-    user_id = str(user.userId) # Ensure this matches your user object structure
+    user_id = str(user.userId) 
     username = str(user.username) 
-    # Create the official message object
+
     msg_obj = {
-        "id": os.urandom(8).hex(), # Unique ID for this message
+        "id": os.urandom(8).hex(), 
         "senderId": user_id,
         "username": username,
         "timestamp": datetime.now().timestamp(),
@@ -161,6 +165,18 @@ def ws_on_message_send(json_data, sid, user, session):
     if chat_id not in messages:
         messages[chat_id] = []
     messages[chat_id].append(msg_obj)
+
+    user_instance = peak = orm_models[0].get(orm_models[0].userId == msg_obj["senderId"])
+    with db.atomic():
+        db_message = orm_models[5].create(
+            body=msg_obj["body"],
+            sender=user_instance,
+            timestamp=msg_obj["timestamp"],
+            chatid=chat_id
+        )
+    
+        peak = orm_models[5].get(orm_models[5].body == msg_obj["body"])
+        print(peak.body)
 
     # Broadcast ONLY to the specific room
     sio.emit("message:proxy", {
@@ -189,7 +205,6 @@ def ws_on_message_update(json_data, sid, user, session):
         "data":  messages.get(wanted_room, []),
         "_push_id": os.urandom(16).hex(),
     }
-
 
 def wss_app(app):
     print("[*] Setting Socket-IO app to the defined")
