@@ -119,7 +119,7 @@ def route_verify_challenge(body: ChallengeVerifyBody):
         if not session_id:
             return ServerErrorResponse().model_dump(), 500
 
-        r = make_response(jsonify({ "succes": True, "message": "Welcome back!", "data": { "session": session_id, "user":  db_user.__dict__ }}))
+        r = make_response({ "succes": True, "message": "Welcome back!", "data": { "session": session_id, "user":  db_user.__dict__ }})
 
         r.set_cookie('i2session',
                      value=session_id,
