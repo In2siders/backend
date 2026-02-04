@@ -163,7 +163,9 @@ def route_session_get_me():
 
 # > Get user
 class SessionGetMeResponse(BaseModel):
-    user: dict
+    user: dict | None
+    error: str | None = None
+    code: str | None = None
 
 @app.get('/v1/session/me', responses={200: SessionGetMeResponse})
 def route_get_me():
