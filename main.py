@@ -124,15 +124,7 @@ def route_verify_challenge(body: ChallengeVerifyBody):
             "username": db_user.__getattribute__('username'),
         } }})
 
-        r.set_cookie('i2session',
-                     value=session_id,
-                     httponly=True,
-                     samesite='Lax',
-                     secure=True,
-                     max_age=30*24*60*60,
-                     domain=".in2siders.app",
-                     path="/",
-                     ) # 30 days
+        r.set_cookie('i2session', value=session_id, httponly=True, samesite='Lax', secure=True, max_age=30*24*60*60, domain=".in2siders.app", path="/" ) # 30 days
         r.status_code = 200
         r.headers["Content-Type"] = "application/json"
         return r
@@ -232,15 +224,7 @@ def route_logout():
     invalidate_session(session_id=session_header, session_fingerprint=db_data.fingerprint) # type: ignore
 
     r = make_response()
-    r.set_cookie('i2session',
-                 value='',
-                 httponly=True,
-                 samesite='Lax',
-                 secure=True,
-                 max_age=0,
-                 domain=".in2siders.app",
-                 path="/",
-                 ) # Delete cookie
+    r.set_cookie('i2session', value='', httponly=True, samesite='Lax', secure=True, max_age=0, domain=".in2siders.app", path="/" ) # Delete cookie
     r.status_code = 204
 
     return r
