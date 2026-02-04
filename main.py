@@ -130,7 +130,7 @@ def route_verify_challenge(body: ChallengeVerifyBody):
                      samesite='Lax',
                      secure=True,
                      max_age=30*24*60*60,
-                     domain=".in2siders.com",
+                     domain=".in2siders.app",
                      path="/",
                      ) # 30 days
         r.status_code = 200
@@ -238,7 +238,7 @@ def route_logout():
                  samesite='Lax',
                  secure=True,
                  max_age=0,
-                 domain=".in2siders.com",
+                 domain=".in2siders.app",
                  path="/",
                  ) # Delete cookie
     r.status_code = 204
