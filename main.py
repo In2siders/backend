@@ -19,7 +19,7 @@ from systems.sessions import create_session, check_session, get_user_from_sessio
 
 # Check production mode
 if app.config['ENV'] == 'production':
-    CORS(app, supports_credentials=True,origins=["https://in2siders.com", "https://www.in2siders.com"])
+    CORS(app, supports_credentials=True,origins=["https://in2siders.app", "https://www.in2siders.app"])
 else:
     CORS(app, origins="*")
 
