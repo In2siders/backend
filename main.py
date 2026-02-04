@@ -137,7 +137,7 @@ def route_verify_challenge(body: ChallengeVerifyBody):
         return BadRequestResponse(error=str(ve)).model_dump(), 400
     except Exception as e:
         print(e)
-        return ServerErrorResponse().model_dump(), 500
+        return ServerErrorResponse(error=str(e)).model_dump(), 500
 
 
 #
