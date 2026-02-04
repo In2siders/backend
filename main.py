@@ -6,6 +6,7 @@ from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenRe
 from flask import request, make_response
 from flask_cors import CORS
 from pydantic import BaseModel
+from typing import Any
 
 # Websocket file
 from wss import wss_app
@@ -178,7 +179,7 @@ def route_session_get_me():
 
 # > Get user
 class SessionGetMeResponse(BaseModel):
-    user: User | None
+    user: Any | None
     error: str | None = None
     code: str | None = None
 
