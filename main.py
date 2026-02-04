@@ -197,7 +197,7 @@ def route_get_me():
         return { "user": None, "error": "Session not valid", "code": "SESSION:MISS" }, 200
 
     # Return user data
-    return SessionGetMeResponse(user=db_data).model_dump(), 200
+    return SessionGetMeResponse(user=db_data.__dict__).model_dump(), 200
 
 # > Get all sessions (for user)
 class SessionGetSessionsResponse(BaseModel):
