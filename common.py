@@ -78,5 +78,5 @@ sio = flask_socketio.SocketIO(
     ping_interval=(25, 30),
     logger=False,
     engineio_logger=False,
-    cors_allowed_origins="*"
+    cors_allowed_origins="*" # TODO: Change this in production
     )

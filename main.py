@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 # Flask
 from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, IPMismatchResponse, BadRequestResponse, ServerErrorResponse
-from flask import request
+from flask import request, jsonify, make_response
 from flask_cors import CORS
 from pydantic import BaseModel
 
@@ -13,11 +13,15 @@ from wss import wss_app
 # Databases
 from systems.orm import initialize_db
 from systems.auth import add_user, ensure_unique_username, create_challenge, verify_challenge
-from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user
+from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user, invalidate_session
 
 # ============================
 
-CORS(app, origins="*")
+# Check production mode
+if app.config['ENV'] == 'production':
+    CORS(app, supports_credentials=True,origins=["https://in2siders.com", "https://www.in2siders.com"])
+else:
+    CORS(app, origins="*")
 
 @app.get('/', responses={200: {"content": {"application/json": {"example": {"message": "WebSocket server is running."}}}}})
 def index():
@@ -114,8 +118,24 @@ def route_verify_challenge(body: ChallengeVerifyBody):
         print(f"Creating session for user: {db_user.__getattribute__('username')}")
         session_id = create_session(user=db_user, request_ip=request.remote_addr)
 
-        print(f"Session created: {session_id}")
-        return {"message": "Login successful", "data": { "session": session_id }}, 200
+        # Session created. Going to publish cookie and return user info
+        if not session_id:
+            return ServerErrorResponse().model_dump(), 500
+
+        r = make_response(jsonify({ "succes": True, "message": "Welcome back!", "data": { "session": session_id, "user":  db_user.__dict__ }}))
+
+        r.set_cookie('i2session',
+                     value=session_id,
+                     httponly=True,
+                     samesite='Lax',
+                     secure=(app.config['ENV'] == 'production'),
+                     max_age=30*24*60*60,
+                     domain=".in2siders.com" if app.config['ENV'] == 'production' else None,
+                     path="/",
+                     ) # 30 days
+        r.status_code = 200
+        r.headers["Content-Type"] = "application/json"
+        return r
     except ValueError as ve:
         return BadRequestResponse(error=str(ve)).model_dump(), 400
     except Exception as e:
@@ -133,8 +153,8 @@ class SessionCheckResponse(BaseModel):
 
 @app.get('/v1/session/check', responses={200: SessionCheckResponse})
 def route_session_get_me():
-    # Get header
-    session_header = request.headers.get('Authorization')
+    # Accept session id either in Authorization header or in the i2session cookie
+    session_header = request.headers.get('Authorization') or request.cookies.get('i2session')
     if not session_header:
         return { "error": "No authorization", "code": "AUTH:MISS" }, 401
 
@@ -155,8 +175,8 @@ class SessionGetMeResponse(BaseModel):
 
 @app.get('/v1/session/me', responses={200: SessionGetMeResponse})
 def route_get_me():
-    # Get header
-    session_header = request.headers.get('Authorization')
+    # Accept session id either in Authorization header or in the i2session cookie
+    session_header = request.headers.get('Authorization') or request.cookies.get('i2session')
     if not session_header:
         return UnauthorizedResponse().model_dump(), 401
 
@@ -175,8 +195,8 @@ class SessionGetSessionsResponse(BaseModel):
 
 @app.get('/v1/session/get', responses={200: SessionGetSessionsResponse})
 def route_get_sessions():
-    # Get header
-    session_header = request.headers.get('Authorization')
+    # Accept session id either in Authorization header or in the i2session cookie
+    session_header = request.headers.get('Authorization') or request.cookies.get('i2session')
     if not session_header:
         return UnauthorizedResponse().model_dump(), 401
 
@@ -191,6 +211,39 @@ def route_get_sessions():
     sessions_list = [{"session_fingerprint": s.fingerprint, "ip": s.ip } for s in sessions]
 
     return SessionGetSessionsResponse(sessions=sessions_list).model_dump(), 200
+
+# > Logout (or invalidate session)
+@app.get('/v1/session/logout', responses={204: None })
+def route_logout():
+    # Accept session id either in Authorization header or in the i2session cookie
+    session_header = request.headers.get('Authorization') or request.cookies.get('i2session')
+    if not session_header:
+        return { "error": "No authorization", "code": "AUTH:MISS" }, 401
+
+    # Search database for session
+    db_data = check_session(session_header)
+
+    # Check db_data.ip with request ip
+    user_ip = request.remote_addr
+    if db_data.ip != user_ip: # type: ignore
+        return { "error": "Session not valid", "code": "IP:MISS" }, 403
+
+    # Invalidate session
+    invalidate_session(session_id=session_header, session_fingerprint=db_data.fingerprint) # type: ignore
+
+    r = make_response()
+    r.set_cookie('i2session',
+                 value='',
+                 httponly=True,
+                 samesite='Lax',
+                 secure=(app.config['ENV'] == 'production'),
+                 max_age=0,
+                 domain=".in2siders.com" if app.config['ENV'] == 'production' else None,
+                 path="/",
+                 ) # Delete cookie
+    r.status_code = 204
+
+    return r
 
 #
 # Register
