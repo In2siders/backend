@@ -292,6 +292,41 @@ def route_register_user(body: RegisterUserBody):
     else:
         return ServerErrorResponse().model_dump(), 500
 
+#
+# Chat requests
+#
+
+# > Get all chat groups
+class GetChatGroupsResponse(BaseModel):
+    error: str | None = None
+    code: str | None = None
+    data: list | None = None
+
+@app.get('/v1/chat/groups', responses={200: GetChatGroupsResponse}, summary="Get all chat groups for a user. Authentication required and provider via http-only cookie")
+def route_get_chat_groups():
+    return GetChatGroupsResponse(
+        error="Not implemented",
+        code="NOT:IMPLEMENTED",
+        data=None
+    )
+
+# > Get chat metadata
+class GetChatMetadataQuery(BaseModel):
+    id: str
+
+class GetChatMetadataResponse(BaseModel):
+    error: str | None = None
+    code: str | None = None
+    data: dict | None = None
+
+@app.post('/v1/chat/metadata/', responses={201: GetChatMetadataResponse}, summary="Get the chatmetadata by its ID.")
+def route_get_chat_metadata(query: GetChatMetadataQuery):
+    return GetChatMetadataResponse(
+        error="Not implemented",
+        code="NOT:IMPLEMENTED",
+        data=None
+    ).model_dump(), 501
+
 # ====
 # Run server
 # ====

@@ -48,7 +48,7 @@ class ForbiddenResponse(BaseModel):
 class IPMismatchResponse(BaseModel):
     error: str = "Session not valid"
     code: str = "IP:MISS"
-    
+
 class BadRequestResponse(BaseModel):
     error: str = "Bad Request"
     code: str = "BAD:REQUEST"
