@@ -1,24 +1,27 @@
-# Dotenv
-from dotenv import load_dotenv
-
-# Flask
-from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, IPMismatchResponse, BadRequestResponse, ServerErrorResponse
-from flask import request, make_response
-from flask_cors import CORS
-from pydantic import BaseModel
+import os
 from typing import Any
 
+# Dotenv
+from dotenv import load_dotenv
+from flask import make_response, request
+from flask_cors import CORS
+from pydantic import BaseModel
+
+# Flask
+from common import (BadRequestResponse, ForbiddenResponse,
+                    NotFoundResponse, ServerErrorResponse,
+                    UnauthorizedResponse, app, sio)
+from systems.auth import (add_user, create_challenge, ensure_unique_username,
+                          verify_challenge)
+# Databases
+from systems.orm import initialize_db
+from systems.sessions import (check_session, create_session,
+                              get_sessions_for_user, get_user_from_session,
+                              invalidate_session)
 # Websocket file
 from wss import wss_app
 
-# Databases
-from systems.orm import User, initialize_db
-from systems.auth import add_user, ensure_unique_username, create_challenge, verify_challenge
-from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user, invalidate_session
-
 # ============================
-
-import os
 
 # Configure CORS origins from environment or defaults. When credentials are used,
 # browsers require explicit origins (wildcard '*' is not allowed with credentials).
@@ -36,7 +39,7 @@ else:
 
 CORS(app, supports_credentials=True, origins=origins_list)
 
-@app.get('/', responses={200: {"content": {"application/json": {"example": {"message": "WebSocket server is running."}}}}})
+@app.get('/')
 def index():
     return {"message": "WebSocket server is running."}
 
@@ -49,7 +52,7 @@ class UsernameCheckQuery(BaseModel):
 class UsernameCheckResponse(BaseModel):
     available: bool
 
-@app.get('/v1/auth/check', responses={200: UsernameCheckResponse, 400: {"content": {"application/json": {"example": {"error": "Invalid username."}}}}})
+@app.get('/v1/auth/check', responses={200: UsernameCheckResponse, 400: BadRequestResponse})
 def route_check_username(query: UsernameCheckQuery):
     username = query.username
     if not username or len(username) < 3:
@@ -191,7 +194,7 @@ def route_get_me():
         return { "user": None, "error": "No authorization", "code": "AUTH:MISS" }, 200
 
     # Search database for session
-    db_data, err = get_user_from_session(session_header)
+    db_data, _ = get_user_from_session(session_header)
 
     if not db_data:
         return { "user": None, "error": "Session not valid", "code": "SESSION:MISS" }, 200
@@ -210,7 +213,9 @@ def route_get_me():
             'bio': bio
         }
     except Exception:
-        return SessionGetMeResponse(user=None, error="Failed to retrieve user data", code="USER:DATA").model_dump(), 200
+        return SessionGetMeResponse(
+            user=None, error="Failed to retrieve user data",
+            code="USER:DATA").model_dump(), 200
 
     # Return user data
     return SessionGetMeResponse(user=user_obj).model_dump(), 200
@@ -299,42 +304,53 @@ class GetChatGroupsResponse(BaseModel):
     code: str | None = None
     data: list | None = None
 
-@app.get('/v1/chat/groups', responses={200: GetChatGroupsResponse}, summary="Get all chat groups for a user. Authentication required and provider via http-only cookie")
+@app.get('/v1/chat/groups', responses={200: GetChatGroupsResponse})
 def route_get_chat_groups():
+    testing_static_groups = [
+        { "id": 1, "name": "Acme Inc."},
+        { "id": "xsfrds", "name": "Grupo de super pequeños amigos!"},
+        { "id": "uxxx", "name": "In2siders Development"},
+    ]
+
     return GetChatGroupsResponse(
-        error="Not implemented",
-        code="NOT:IMPLEMENTED",
-        data=None
-    )
+        data=testing_static_groups
+    ), 200
 
 # > Get chat metadata
-class GetChatMetadataQuery(BaseModel):
-    id: str
-
 class GetChatMetadataResponse(BaseModel):
     error: str | None = None
     code: str | None = None
     data: dict | None = None
 
-@app.post('/v1/chat/metadata/', responses={201: GetChatMetadataResponse}, summary="Get the chatmetadata by its ID.")
-def route_get_chat_metadata(query: GetChatMetadataQuery):
+@app.post('/v1/chat/metadata/<chat_id>', responses={201: GetChatMetadataResponse})
+def route_get_chat_metadata(chat_id: str):
+    testing_static_metadata = {
+        "id": chat_id,
+        "name": f"Chat {chat_id}",
+        "people": [
+            { "id": 1, "username": "User1" },
+            { "id": 2, "username": "User2" },
+        ],
+        "online": [
+            { "id": 1, "username": "User1" },
+        ]
+    }
+
     return GetChatMetadataResponse(
-        error="Not implemented",
-        code="NOT:IMPLEMENTED",
-        data=None
-    ).model_dump(), 501
+        data=testing_static_metadata
+    ).model_dump(), 200
 
 # ====
 # Run server
 # ====
 def start_server(v = False):
-    PORT = int(os.getenv('PORT', 5000))
+    port = int(os.getenv('PORT', "5000"))
 
     load_dotenv()
     initialize_db()
     wss_app(app)
-    sio.run(app, debug=True, host='0.0.0.0', port=PORT, allow_unsafe_werkzeug=v)
-    app.run(host='0.0.0.0', port=PORT)
+    sio.run(app, debug=True, host='0.0.0.0', port=port, allow_unsafe_werkzeug=v)
+    app.run(host='0.0.0.0', port=port)
 
 if __name__ == '__main__':
     start_server(True)

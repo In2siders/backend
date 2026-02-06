@@ -1,0 +1,9 @@
+# Source - https://stackoverflow.com/a/7878690
+# Posted by gurney alex, modified by community. See post 'Timeline' for change history
+# Retrieved 2026-02-06, License - CC BY-SA 4.0
+
+[MASTER]
+disable=
+    C0114,
+    C0115,
+    C0116,
