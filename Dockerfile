@@ -1,27 +1,34 @@
-FROM python:3.10-alpine
-LABEL authors="In2siders Team <hello@leiuq.fun>"
+## Dockerfile from: https://dev.to/isaackumi/dockerizing-a-flask-application-a-multi-stage-dockerfile-approach-389a
 
-WORKDIR /code
+# Stage 1: Build stage
+FROM python:3.9 as builder
 
-# Install build dependencies required for Python packages
-RUN apk add --no-cache \
-    gcc \
-    musl-dev \
-    linux-headers \
-    gnupg
+WORKDIR /app
 
-# Copy and install Python dependencies
-COPY requirements.txt /code/
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Copy requirements.txt to the container
+COPY requirements.txt .
+RUN pip install --upgrade pip
+RUN pip install --upgrade setuptools wheel
 
-COPY . /code/
+# Install dependencies
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-# Environment variables
-ENV FLASK_APP=main.py
-ENV FLASK_ENV=production
-ENV FLASK_RUN_HOST=0.0.0.0
-ENV PORT=5000
+# Copy the application source code
+COPY . .
+RUN rm requirements.txt
 
-EXPOSE $PORT
+# Stage 2: Production stage
+FROM builder
 
-CMD ["sh", "-c", "python -m flask run --host=0.0.0.0 --port=$PORT"]
+WORKDIR /app
+
+# Copy the installed dependencies from the previous stage
+COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+
+# Copy the application source code from the previous stage
+COPY --from=builder /app/* .
+
+# Expose port 5000
+EXPOSE 5000
+
+CMD ["python","app.py"]

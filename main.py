@@ -195,7 +195,7 @@ def route_get_me():
 
     if not db_data:
         return { "user": None, "error": "Session not valid", "code": "SESSION:MISS" }, 200
-    
+
     user_obj = None
     try:
         uid = getattr(db_data, 'userId')
@@ -327,9 +327,14 @@ def route_get_chat_metadata(query: GetChatMetadataQuery):
 # ====
 # Run server
 # ====
-load_dotenv()
-initialize_db()
-wss_app(app)
+def start_server(v = False):
+    PORT = int(os.getenv('PORT', 5000))
+
+    load_dotenv()
+    initialize_db()
+    wss_app(app)
+    sio.run(app, debug=True, host='0.0.0.0', port=PORT, allow_unsafe_werkzeug=v)
+    app.run(host='0.0.0.0', port=PORT)
+
 if __name__ == '__main__':
-    sio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
-    app.run(host='0.0.0.0', port=5000)
+    start_server(True)
