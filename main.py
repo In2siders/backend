@@ -2,7 +2,7 @@
 from dotenv import load_dotenv
 
 # Flask
-from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, BadRequestResponse, ServerErrorResponse
+from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, IPMismatchResponse, BadRequestResponse, ServerErrorResponse
 from flask import request, make_response
 from flask_cors import CORS
 from pydantic import BaseModel
@@ -152,7 +152,7 @@ def route_verify_challenge(body: ChallengeVerifyBody):
             return ServerErrorResponse().model_dump(), 500
 
         r = make_response({ "success": True, "message": "Welcome back!", "data": { "session": session_id, "user":  {
-            "id": db_user.__getattribute__('userId') or db_user.__getattribute__('id') or db_user.__getattribute__('userid'), # idk how it's named exactly
+            "id": db_user.__getattribute__('userId'),
             "username": db_user.__getattribute__('username'),
         } }})
 
@@ -201,16 +201,15 @@ class SessionGetMeResponse(BaseModel):
 
 @app.get('/v1/session/me', responses={200: SessionGetMeResponse})
 def route_get_me():
-    # Accept session id either in Authorization header or in the i2session cookie
     session_header = request.cookies.get('i2session')
     if not session_header:
-        return { "user": None, "error": "No authorization", "code": "AUTH:MISS" }, 200
+        return UnauthorizedResponse().model_dump(), 200
 
     # Search database for session
     db_data, _ = get_user_from_session(session_header)
 
     if not db_data:
-        return { "user": None, "error": "Session not valid", "code": "SESSION:MISS" }, 200
+        return UnauthorizedResponse().model_dump(), 200
 
     user_obj = None
     try:
@@ -226,9 +225,7 @@ def route_get_me():
             'bio': bio
         }
     except Exception:
-        return SessionGetMeResponse(
-            user=None, error="Failed to retrieve user data",
-            code="USER:DATA").model_dump(), 200
+        return SessionGetMeResponse(user=None, error="Failed to retrieve user data", code="USER:DATA").model_dump(), 200
 
     # Return user data
     return SessionGetMeResponse(user=user_obj).model_dump(), 200
@@ -245,7 +242,7 @@ def route_get_sessions():
         return UnauthorizedResponse().model_dump(), 401
 
     # Search database for session
-    db_data, err = get_user_from_session(session_header)
+    db_data, _ = get_user_from_session(session_header)
 
     if not db_data:
         return ForbiddenResponse().model_dump(), 403
@@ -262,7 +259,7 @@ def route_logout():
     # Accept session id either in Authorization header or in the i2session cookie
     session_header = request.cookies.get('i2session')
     if not session_header:
-        return { "error": "No authorization", "code": "AUTH:MISS" }, 401
+        return UnauthorizedResponse().model_dump(), 401
 
     # Search database for session
     db_data = check_session(session_header)
@@ -270,7 +267,7 @@ def route_logout():
     # Check db_data.ip with request ip
     user_ip = request.remote_addr
     if db_data.ip != user_ip: # type: ignore
-        return { "error": "Session not valid", "code": "IP:MISS" }, 403
+        return IPMismatchResponse().model_dump(), 403
 
     # Invalidate session
     invalidate_session(session_id=session_header, session_fingerprint=db_data.fingerprint) # type: ignore
@@ -315,10 +312,14 @@ def route_register_user(body: RegisterUserBody):
 class GetChatGroupsResponse(BaseModel):
     error: str | None = None
     code: str | None = None
-    data: list | None = None
+    data: list = []
 
 @app.get('/v1/chat/groups', responses={200: GetChatGroupsResponse})
 def route_get_chat_groups():
+    session_header = request.cookies.get('i2session')
+    if not session_header:
+        return UnauthorizedResponse().model_dump(), 401
+
     testing_static_groups = [
         { "id": 1, "name": "Acme Inc."},
         { "id": "xsfrds", "name": "Grupo de super pequeños amigos!"},
@@ -337,6 +338,10 @@ class GetChatMetadataResponse(BaseModel):
 
 @app.post('/v1/chat/metadata/<chat_id>', responses={201: GetChatMetadataResponse})
 def route_get_chat_metadata(chat_id: str):
+    session_header = request.cookies.get('i2session')
+    if not session_header:
+        return UnauthorizedResponse().model_dump(), 401
+
     testing_static_metadata = {
         "id": chat_id,
         "name": f"Chat {chat_id}",
@@ -368,8 +373,7 @@ def start_server(v = False):
     return app
 
 if __name__ == '__main__':
-    PORT = int(os.getenv('PORT', 5000))
     start_server(True)
-    app.run(host='0.0.0.0', port=PORT)
+    app.run(host='0.0.0.0', port=5000)
 
 server = start_server()
