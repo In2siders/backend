@@ -1,4 +1,11 @@
-import os
+# Dotenv
+from dotenv import load_dotenv
+
+# Flask
+from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, BadRequestResponse, ServerErrorResponse
+from flask import request, make_response
+from flask_cors import CORS
+from pydantic import BaseModel
 from typing import Any
 
 # Dotenv
@@ -20,6 +27,12 @@ from systems.sessions import (check_session, create_session,
                               invalidate_session)
 # Websocket file
 from wss import wss_app
+
+# Databases
+from systems.db import proxy_load
+from systems.orm import initialize_db
+from systems.auth import add_user, ensure_unique_username, create_challenge, verify_challenge
+from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user, invalidate_session
 
 # ============================
 
@@ -344,13 +357,19 @@ def route_get_chat_metadata(chat_id: str):
 # Run server
 # ====
 def start_server(v = False):
-    port = int(os.getenv('PORT', "5000"))
 
     load_dotenv()
+
+    proxy_load()
+
     initialize_db()
     wss_app(app)
-    sio.run(app, debug=True, host='0.0.0.0', port=port, allow_unsafe_werkzeug=v)
-    app.run(host='0.0.0.0', port=port)
+    sio.init_app(app)
+    return app
 
 if __name__ == '__main__':
+    PORT = int(os.getenv('PORT', 5000))
     start_server(True)
+    app.run(host='0.0.0.0', port=PORT)
+
+server = start_server()

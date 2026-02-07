@@ -83,7 +83,7 @@ def initialize_db():
         if not db.is_closed():
             db.close()
         with db.atomic():
-            db.create_tables(orm_get_all_models())
+            db.create_tables(orm_get_all_models(), safe=True)
 
         print("[*] Database initialized and tables created.")
         return True
