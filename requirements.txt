@@ -10,4 +10,4 @@ pydantic==2.12.3
 python-dotenv==1.2.1
 psycopg2-binary==2.9.11
 eventlet==0.40.4
-boto3=1.42.44
+boto3==1.42.44
