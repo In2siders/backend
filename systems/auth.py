@@ -58,7 +58,7 @@ def verify_challenge(challenge_id, solution):
                      .where(Challenge.challengeId == challenge_id)
                      .where(Challenge.solution == solution).get())
         expires_str = challenge.expires_at
-        
+
         expires_dt = datetime.fromisoformat(expires_str)
         if expires_dt < datetime.now():
             print("[-] Challenge expired.")
