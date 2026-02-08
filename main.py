@@ -308,6 +308,7 @@ class GetChatGroupsResponse(BaseModel):
     error: str | None = None
     code: str | None = None
     data: list = []
+    success: bool = True
 
 @app.get('/v1/chat/groups', responses={200: GetChatGroupsResponse})
 def route_get_chat_groups():
