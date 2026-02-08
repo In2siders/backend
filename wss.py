@@ -168,8 +168,6 @@ def ws_on_encryption_request(json_data, sid, user, session):
             "key": "simetric_de-encryption_key_for_group_chat_encrypted_with_user_public_key",
         }
     }
-    
-    return
 
 @sio.on('message:send')
 @check_auth
@@ -177,7 +175,7 @@ def ws_on_message_send(json_data, sid, user, session):
     orm_models = orm_get_all_models()
     chat_id = json_data.get('chat_id')
     body = json_data.get('body', "")
-    
+
     user_id = str(user.userId) 
     username = str(user.username) 
 
@@ -202,7 +200,7 @@ def ws_on_message_send(json_data, sid, user, session):
             timestamp=msg_obj["timestamp"],
             chatid=chat_id
         )
-    
+
         peak = orm_models[5].get(orm_models[5].body == msg_obj["body"])
         print(peak.body)
 
