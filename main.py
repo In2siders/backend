@@ -361,7 +361,6 @@ def start_server():
 
     initialize_db()
     wss_app(app)
-    sio.init_app(app)
     return app
 
 if __name__ == '__main__':
