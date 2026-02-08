@@ -97,8 +97,6 @@ class ChallengeRequestResponse(BaseModel):
 def route_request_challenge(body: ChallengeRequestBody):
     username = body.username
 
-    print(username)
-
     if not username or len(username) < 3:
         return BadRequestResponse().model_dump(), 400
 
@@ -165,7 +163,6 @@ def route_verify_challenge(body: ChallengeVerifyBody):
     except ValueError as ve:
         return BadRequestResponse(error=str(ve)).model_dump(), 400
     except Exception as e:
-        print(e)
         return ServerErrorResponse(error=str(e)).model_dump(), 500
 
 
@@ -216,15 +213,11 @@ def route_get_me():
     user_obj = None
     try:
         u = getattr(db_data, 'user')
-        uid = getattr(u, 'userId')
-        username = getattr(u, 'username')
-        bio = getattr(u, 'bio')
 
-        print(f"Your ip: {request.remote_addr} | Session ip: {db_data.userIp}") # type: ignore
         user_obj = {
-            'id': uid,
-            'username': username,
-            'bio': bio
+            'userId': getattr(u, 'userId'),
+            'username': getattr(u, 'username'),
+            'bio': getattr(u, 'bio')
         }
     except Exception as e:
         return SessionGetMeResponse(user=None, error=f"Failed to retrieve user data. {str(e)}", code="USER:DATA").model_dump(), 200
