@@ -1,7 +1,7 @@
 import os
 
 from peewee import DoesNotExist
-from systems.orm import Session
+from systems.orm import Session, User
 from systems.db import db
 from hashlib import sha256, md5
 
@@ -25,10 +25,13 @@ def create_session(user, request_ip):
         print('[- ERROR -] create_session Exception:', e)
         return None
 
-def check_session(session_id):
+def check_session(session_id, join_user=False):
     with db.atomic():
         try:
-            session = Session.select().where(Session.sessionId == session_id).get()
+            if join_user:
+                session = Session.select().join(User, on=(Session.user == User.userId)).where(Session.sessionId == session_id).get()
+            else:
+                session = Session.select().where(Session.sessionId == session_id).get()
             return session
         except DoesNotExist:
             return None
@@ -41,6 +44,22 @@ def get_user_from_session(session_id, request_ip=None):
 
     if session:
         return session.user, None
+
+    return None, "Session does not exist"
+
+def get_user_and_session_from_session(session_id, request_ip=None):
+    """
+    Returns the user and session from a session ID, with an optional IP check.
+    Provides same security as `get_user_from_session` but also returns the session object.
+    This session object contains the session data and full user data, the query is joined with the user table.
+    """
+    session = check_session(session_id, join_user=True)
+
+    if request_ip and session and session.userIp != request_ip:
+        return None, f"IP Missmatch: session IP {session.userIp} vs request IP {request_ip}"
+
+    if session:
+        return session, None
 
     return None, "Session does not exist"
 
