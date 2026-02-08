@@ -12,7 +12,7 @@ from systems.sessions import get_user_from_session
 from systems.wss_addons import check_auth, guarded_join_room, guarded_leave_room, connected_sessions, messages
 
 from systems.orm import orm_get_all_models
-
+from attachtments import upload_base64_to_s3, get_signed_url
 @sio.on('connect')
 def ws_on_connect():
     orm_models = orm_get_all_models()
@@ -68,13 +68,15 @@ def ws_on_connect():
             messages[c_id] = [] 
             seen_chats.add(c_id)
 
+        att_urls = [get_signed_url(att.file_url) for att in message.attachments]
+
         msg_obj = {
-            # Use the DB primary key if possible to keep IDs consistent
-            "id": str(message.id) if hasattr(message, 'id') else os.urandom(8).hex(), 
+            "id": str(message.messageId),
             "senderId": str(message.sender.userId),
             "username": message.sender.username,
             "timestamp": message.timestamp,
             "body": message.body,
+            "attachments": [url for url in att_urls if url],
             "_hash": "Test",
         }
 
@@ -173,38 +175,59 @@ def ws_on_encryption_request(json_data, sid, user, session):
 @check_auth
 def ws_on_message_send(json_data, sid, user, session):
     orm_models = orm_get_all_models()
+    AttachmentModel = orm_models[4]
+    MessageModel = orm_models[5]
+    
     chat_id = json_data.get('chat_id')
     body = json_data.get('body', "")
+    raw_attachments = json_data.get('attachments', [])
 
-    user_id = str(user.userId)
-    username = str(user.username)
+    processed_urls = [] 
+
+    db_keys = []      
+    display_urls = [] 
+
+    for att in raw_attachments:
+        s3_key = upload_base64_to_s3(att.get('data'), att.get('filename', 'file'), chat_id)
+        
+        if s3_key:
+            db_keys.append(s3_key)
+            signed_url = get_signed_url(s3_key)
+            display_urls.append(signed_url)
 
     msg_obj = {
         "id": os.urandom(8).hex(),
-        "senderId": user_id,
-        "username": username,
+        "senderId": str(user.userId),
+        "username": str(user.username),
         "timestamp": datetime.now().timestamp(),
         "body": body,
-        "_hash": md5(f"{user_id}{body}{datetime.now()}".encode()).hexdigest(),
+        "attachments": [url for url in display_urls if url], # Working links!
+        "_hash": md5(f"{user.userId}{body}{datetime.now()}".encode()).hexdigest(),
     }
+
+    # 3. Save Message to DB
+    with db.atomic():
+        db_message = MessageModel.create(
+            body=msg_obj["body"],
+            sender=user,
+            timestamp=msg_obj["timestamp"],
+            chatid=chat_id
+        )
+        
+        for key in db_keys:
+            AttachmentModel.create(
+                file_url=key,  
+                file_name="attachment",
+                uploaded_by=user,
+                uploaded_at=db_message.timestamp,
+                message=db_message  
+            )
 
     if chat_id not in messages:
         messages[chat_id] = []
     messages[chat_id].append(msg_obj)
 
-    user_instance = peak = orm_models[0].get(orm_models[0].userId == msg_obj["senderId"])
-    with db.atomic():
-        db_message = orm_models[5].create(
-            body=msg_obj["body"],
-            sender=user_instance,
-            timestamp=msg_obj["timestamp"],
-            chatid=chat_id
-        )
-
-        peak = orm_models[5].get(orm_models[5].body == msg_obj["body"])
-        print(peak.body)
-
-    # Broadcast ONLY to the specific room
+    # 4. Broadcast
     sio.emit("message:proxy", {
         "_push_id": msg_obj["id"],
         "message": msg_obj,

@@ -47,14 +47,6 @@ class Group(BaseModel):
 # Membership model (M2M relation | User <-> Group)
 Membership = Group.members.get_through_model() 
 
-# Attachments model
-class Attachment(BaseModel):
-    attachmentId = UUIDField(primary_key=True, default=uuid.uuid4)
-    file_url = CharField() # URL to S3 or other storage (Behind a CDN)
-    file_name = CharField() # Original file name
-    uploaded_by = ForeignKeyField(User, backref='attachments')
-    uploaded_at = CharField() # Timestamp of upload
-
 # Message schema
 class Message(BaseModel):
     messageId = UUIDField(primary_key=True, default=uuid.uuid4)
@@ -63,6 +55,16 @@ class Message(BaseModel):
     timestamp = CharField() # Timestamp of the message
     chatid = TextField()
 
+# Attachments model
+class Attachment(BaseModel):
+    attachmentId = UUIDField(primary_key=True, default=uuid.uuid4)
+    file_url = CharField() # URL to S3 or other storage (Behind a CDN)
+    file_name = CharField() # Original file name
+    uploaded_by = ForeignKeyField(User, backref='attachments')
+    uploaded_at = CharField() # Timestamp of upload
+    message = ForeignKeyField(Message, backref='attachments', null=True)
+    
+    
 # Message transport
 class MessageTransport(BaseModel):
     message = ForeignKeyField(Message, backref='transports')
