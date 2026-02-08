@@ -14,7 +14,7 @@ from systems.wss_addons import check_auth, guarded_join_room, guarded_leave_room
 from systems.orm import orm_get_all_models
 
 @sio.on('connect')
-def ws_on_connect(auth):
+def ws_on_connect():
     orm_models = orm_get_all_models()
 
     # Get session token from the connection "auth" payload
@@ -59,15 +59,15 @@ def ws_on_connect(auth):
 
     # Load DB to cache
     seen_chats = set() # Track which rooms we've cleared during this loop
-    
+
     for message in orm_models[5].select():
         c_id = str(message.chatid) # Keep it as a string to match room:join
-        
+
         # If this is the first time we see this chat_id in THIS loop, clear it
         if c_id not in seen_chats:
             messages[c_id] = [] 
             seen_chats.add(c_id)
-    
+
         msg_obj = {
             # Use the DB primary key if possible to keep IDs consistent
             "id": str(message.id) if hasattr(message, 'id') else os.urandom(8).hex(), 
@@ -77,7 +77,7 @@ def ws_on_connect(auth):
             "body": message.body,
             "_hash": "Test",
         }
-        
+
         messages[c_id].append(msg_obj)
 
     return True
@@ -110,7 +110,6 @@ def ws_on_join_event(json_data, sid, user, session):
         # Here we should check if the room is valid for this user (i.e., is a direct chat between this user and another one)
         # For simplicity, let's assume all non-group rooms are valid for now.
         print(f'[JOIN] {sid} non-group room requests are always allowed in this demo.') # TODO: Add real checks here.
-        guarded_join_room(sid, wanted_room)
 
     print(f'[JOIN] {sid} joining room: {wanted_room}')
 
