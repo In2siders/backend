@@ -1,7 +1,9 @@
-from os import getenv
-
 # Dotenv
 from dotenv import load_dotenv
+# Load environment variables
+load_dotenv()
+
+from os import getenv
 
 # Flask
 from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, IPMismatchResponse, BadRequestResponse, ServerErrorResponse
@@ -37,9 +39,6 @@ from systems.auth import add_user, ensure_unique_username, create_challenge, ver
 from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user, invalidate_session
 
 # ============================
-
-# Load environment variables
-load_dotenv()
 
 # Dev environment check
 dev_environment = getenv('FLASK_ENV') == 'development'
