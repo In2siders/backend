@@ -176,11 +176,11 @@ def ws_on_message_send(json_data, sid, user, session):
     chat_id = json_data.get('chat_id')
     body = json_data.get('body', "")
 
-    user_id = str(user.userId) 
-    username = str(user.username) 
+    user_id = str(user.userId)
+    username = str(user.username)
 
     msg_obj = {
-        "id": os.urandom(8).hex(), 
+        "id": os.urandom(8).hex(),
         "senderId": user_id,
         "username": username,
         "timestamp": datetime.now().timestamp(),
