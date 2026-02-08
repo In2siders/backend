@@ -1,3 +1,5 @@
+from os import getenv
+
 # Dotenv
 from dotenv import load_dotenv
 
@@ -24,7 +26,7 @@ from systems.auth import (add_user, create_challenge, ensure_unique_username,
 from systems.orm import initialize_db
 from systems.sessions import (check_session, create_session,
                               get_sessions_for_user, get_user_from_session,
-                              invalidate_session)
+                              get_user_and_session_from_session, invalidate_session)
 # Websocket file
 from wss import wss_app
 
@@ -36,21 +38,23 @@ from systems.sessions import create_session, check_session, get_user_from_sessio
 
 # ============================
 
+# Load environment variables
+load_dotenv()
+
+# Dev environment check
+dev_environment = getenv('FLASK_ENV') == 'development'
+
 # Configure CORS origins from environment or defaults. When credentials are used,
 # browsers require explicit origins (wildcard '*' is not allowed with credentials).
-cors_origins_env = os.getenv('CORS_ORIGINS')
-if cors_origins_env:
-    origins_list = [o.strip() for o in cors_origins_env.split(',') if o.strip()]
-else:
-    origins_list = [
-        "https://in2siders.app",
-        "https://www.in2siders.app",
-        "https://api.in2siders.app",
-        "http://localhost:3000",
-        "http://localhost:5173",
-    ]
+cors_origins_env = getenv('CORS_ORIGINS')
 
-CORS(app, supports_credentials=True, origins=origins_list)
+if cors_origins_env:
+    origins_list = [origin.strip() for origin in cors_origins_env.split(',')]
+else:
+    origins_list = ["https://in2siders.app", "https://www.in2siders.app"]
+
+print(f"Allowing CORS for origins: {origins_list if not dev_environment else "*"}")
+CORS(app, supports_credentials=True, origins=(origins_list if not dev_environment else "*"))
 
 @app.get('/')
 def index():
@@ -138,13 +142,11 @@ def route_verify_challenge(body: ChallengeVerifyBody):
         return BadRequestResponse(error="Challenge ID and solution are required.", code="RETO:MISS").model_dump(), 400
 
     try:
-        print(f"Verifying challenge: challenge_id={challenge_id}, solution={solution}")
         is_valid, db_user = verify_challenge(challenge_id, solution)
         if not is_valid:
             return BadRequestResponse(error="Invalid challenge solution.", code="RETO:INVALID").model_dump(), 400
 
         # Create session
-        print(f"Creating session for user: {db_user.__getattribute__('username')}")
         session_id = create_session(user=db_user, request_ip=request.remote_addr)
 
         # Session created. Going to publish cookie and return user info
@@ -156,7 +158,7 @@ def route_verify_challenge(body: ChallengeVerifyBody):
             "username": db_user.__getattribute__('username'),
         } }})
 
-        r.set_cookie('i2session', value=session_id, httponly=True, samesite='Lax', secure=True, max_age=30*24*60*60, domain=".in2siders.app", path="/" ) # 30 days
+        r.set_cookie('i2session', value=session_id, httponly=True, samesite=('Lax' if not dev_environment else 'None'), secure=True, max_age=30*24*60*60, domain=(".in2siders.app" if not dev_environment else None), path="/" ) # 30 days
         r.status_code = 200
         r.headers["Content-Type"] = "application/json"
         return r
@@ -206,26 +208,26 @@ def route_get_me():
         return UnauthorizedResponse().model_dump(), 200
 
     # Search database for session
-    db_data, _ = get_user_from_session(session_header)
+    db_data, err = get_user_and_session_from_session(session_header, request.remote_addr)
 
     if not db_data:
-        return UnauthorizedResponse().model_dump(), 200
+        return UnauthorizedResponse(error=err).model_dump(), 200
 
     user_obj = None
     try:
-        uid = getattr(db_data, 'userId')
-        username = getattr(db_data, 'username')
-        bio = getattr(db_data, 'bio')
+        u = getattr(db_data, 'user')
+        uid = getattr(u, 'userId')
+        username = getattr(u, 'username')
+        bio = getattr(u, 'bio')
 
-        print(f"Your ip: {request.remote_addr} | Session ip: {db_data.ip}") # type: ignore
-
+        print(f"Your ip: {request.remote_addr} | Session ip: {db_data.userIp}") # type: ignore
         user_obj = {
             'id': uid,
             'username': username,
             'bio': bio
         }
-    except Exception:
-        return SessionGetMeResponse(user=None, error="Failed to retrieve user data", code="USER:DATA").model_dump(), 200
+    except Exception as e:
+        return SessionGetMeResponse(user=None, error=f"Failed to retrieve user data. {str(e)}", code="USER:DATA").model_dump(), 200
 
     # Return user data
     return SessionGetMeResponse(user=user_obj).model_dump(), 200
@@ -273,7 +275,7 @@ def route_logout():
     invalidate_session(session_id=session_header, session_fingerprint=db_data.fingerprint) # type: ignore
 
     r = make_response()
-    r.set_cookie('i2session', value='', httponly=True, samesite='Lax', secure=True, max_age=0, domain=".in2siders.app", path="/" ) # Delete cookie
+    r.set_cookie('i2session', value='', httponly=True, samesite=('Lax' if not dev_environment else 'None'), secure=True, max_age=0, domain=(".in2siders.app" if not dev_environment else None), path="/" ) # Delete cookie
     r.status_code = 204
 
     return r
@@ -328,7 +330,7 @@ def route_get_chat_groups():
 
     return GetChatGroupsResponse(
         data=testing_static_groups
-    ), 200
+    ).model_dump(), 200
 
 # > Get chat metadata
 class GetChatMetadataResponse(BaseModel):
@@ -361,10 +363,7 @@ def route_get_chat_metadata(chat_id: str):
 # ====
 # Run server
 # ====
-def start_server(v = False):
-
-    load_dotenv()
-
+def start_server():
     proxy_load()
 
     initialize_db()
