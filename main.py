@@ -305,8 +305,6 @@ def route_register_user(body: RegisterUserBody):
 
 # > Get all chat groups
 class GetChatGroupsResponse(BaseModel):
-    error: str | None = None
-    code: str | None = None
     data: list = []
     success: bool = True
 
@@ -328,19 +326,23 @@ def route_get_chat_groups():
 
 # > Get chat metadata
 class GetChatMetadataResponse(BaseModel):
-    error: str | None = None
-    code: str | None = None
+    success: bool = True
     data: dict | None = None
 
-@app.post('/v1/chat/metadata/<chat_id>', responses={201: GetChatMetadataResponse})
-def route_get_chat_metadata(chat_id: str):
+class GetMetadataPath(BaseModel):
+    chatid: str
+
+@app.get('/v1/chat/metadata/<chatid>', responses={200: GetChatMetadataResponse})
+def route_get_chat_metadata(path: GetMetadataPath):
     session_header = request.cookies.get('i2session')
     if not session_header:
         return UnauthorizedResponse().model_dump(), 401
 
+    chatid = path.chatid
+
     testing_static_metadata = {
-        "id": chat_id,
-        "name": f"Chat {chat_id}",
+        "id": chatid,
+        "name": f"Chat {chatid}",
         "people": [
             { "id": 1, "username": "User1" },
             { "id": 2, "username": "User2" },
