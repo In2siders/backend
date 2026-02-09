@@ -52,8 +52,8 @@ if cors_origins_env:
 else:
     origins_list = ["https://in2siders.app", "https://www.in2siders.app"]
 
-print(f"Allowing CORS for origins: {origins_list if not dev_environment else "*"}")
-CORS(app, supports_credentials=True, origins=(origins_list if not dev_environment else "*"))
+print(f"Allowing CORS for origins: {origins_list if not dev_environment else '*'}")
+CORS(app, supports_credentials=True, origins=(origins_list if not dev_environment else '*'))
 
 @app.get('/')
 def index():
