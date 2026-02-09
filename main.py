@@ -358,7 +358,7 @@ def route_get_chat_metadata(path: GetMetadataPath):
 # ====
 # Run server
 # ====
-def start_server():
+def start_server(*args, **kwargs):
     proxy_load()
 
     initialize_db()
