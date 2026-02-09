@@ -18,6 +18,12 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
+# --- FIX: Install GPG in the runtime image ---
+RUN apt-get update && apt-get install -y \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+# ---------------------------------------------
+
 # Copiamos solo las librerías instaladas desde la etapa builder
 COPY --from=builder /install /usr/local
 
