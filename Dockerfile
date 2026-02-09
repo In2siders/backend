@@ -1,7 +1,7 @@
 ## Dockerfile from: https://dev.to/isaackumi/dockerizing-a-flask-application-a-multi-stage-dockerfile-approach-389a
 
 # Stage 1: Build stage
-FROM python:3.9 as builder
+FROM python:3.10 as builder
 
 WORKDIR /app
 
@@ -31,4 +31,4 @@ COPY --from=builder /app/* .
 # Expose port 5000
 EXPOSE 5000
 
-CMD ["python","app.py"]
+CMD ["sh","boot.sh"]
