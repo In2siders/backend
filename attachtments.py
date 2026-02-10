@@ -54,3 +54,15 @@ def get_signed_url(s3_key):
         print(f"[-] Signing failed: {e}")
         return None
 
+def create_signed_upload_url(filename, chat_id):
+    unique_name = f"{str(uuid.uuid4()).replace('-', '')}_{filename}"
+    s3_path = f"chats/{chat_id}/{unique_name}"
+
+    try:
+        url = s3.generate_presigned_url(
+            "put_object", Params={"Bucket": BUCKET_NAME, "Key": s3_path}, ExpiresIn=3600
+        )
+        return url, s3_path
+    except Exception as e:
+        print(f"[-] Signing failed: {e}")
+        return None, None
