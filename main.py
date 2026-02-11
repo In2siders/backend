@@ -143,6 +143,9 @@ def route_verify_challenge(body: ChallengeVerifyBody):
         if not is_valid:
             return BadRequestResponse(error="Invalid challenge solution.", code="RETO:INVALID").model_dump(), 400
 
+        if db_user and not db_user.canLogin:
+            return BadRequestResponse(error="User access has been limited and cannot create sessions.", code="USER:LIMITED").model_dump(), 400
+
         # Create session
         session_id = create_session(user=db_user, request_ip=request.remote_addr)
 
