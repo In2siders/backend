@@ -13,6 +13,8 @@ from systems.wss_addons import check_auth, guarded_join_room, guarded_leave_room
 
 from systems.orm import orm_get_all_models
 from attachtments import upload_base64_to_s3, get_signed_url
+from utils import get_client_ip
+
 @sio.on('connect')
 def ws_on_connect():
     orm_models = orm_get_all_models()
@@ -32,8 +34,8 @@ def ws_on_connect():
     user = None
     err = "Not specified"
     try:
-        user, err = get_user_from_session(session_token, request.remote_addr)
-        print(f"req ip: {request.remote_addr}")
+        user, err = get_user_from_session(session_token, get_client_ip())
+        print(f"req ip: {get_client_ip()}")
     except Exception as e:
         sio.emit('error', {'message': f'Error {e}.'})
         return False

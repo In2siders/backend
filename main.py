@@ -1,5 +1,7 @@
 # Dotenv
 from dotenv import load_dotenv
+
+from utils import get_client_ip
 # Load environment variables
 load_dotenv()
 
@@ -147,7 +149,7 @@ def route_verify_challenge(body: ChallengeVerifyBody):
             return BadRequestResponse(error="User access has been limited and cannot create sessions.", code="USER:LIMITED").model_dump(), 400
 
         # Create session
-        session_id = create_session(user=db_user, request_ip=request.remote_addr)
+        session_id = create_session(user=db_user, request_ip=get_client_ip())
 
         # Session created. Going to publish cookie and return user info
         if not session_id:
@@ -187,7 +189,7 @@ def route_session_get_me():
     db_data = check_session(session_header)
 
     # Check db_data.ip with request ip
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     if db_data.ip != user_ip: # type: ignore
         return { "error": "Session not valid", "code": "IP:MISS" }, 403
 
@@ -207,7 +209,7 @@ def route_get_me():
         return UnauthorizedResponse().model_dump(), 200
 
     # Search database for session
-    db_data, err = get_user_and_session_from_session(session_header, request.remote_addr)
+    db_data, err = get_user_and_session_from_session(session_header, get_client_ip())
 
     if not db_data:
         return UnauthorizedResponse(error=err).model_dump(), 200
@@ -262,7 +264,7 @@ def route_logout():
     db_data = check_session(session_header)
 
     # Check db_data.ip with request ip
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     if db_data.ip != user_ip: # type: ignore
         return IPMismatchResponse().model_dump(), 403
 
