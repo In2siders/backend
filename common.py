@@ -79,7 +79,7 @@ app = OpenAPI(
     responses={ 404: NotFoundResponse, 401: UnauthorizedResponse, 403: ForbiddenResponse, 400: BadRequestResponse, 500: ServerErrorResponse }
     )
 
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
 
 sio = flask_socketio.SocketIO(
     manage_session=False,
