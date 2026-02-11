@@ -1,3 +1,5 @@
+from werkzeug.middleware.proxy_fix import ProxyFix
+
 import flask_socketio
 
 from flask_openapi3.models.info import Info
@@ -76,6 +78,8 @@ app = OpenAPI(
     servers=servers,
     responses={ 404: NotFoundResponse, 401: UnauthorizedResponse, 403: ForbiddenResponse, 400: BadRequestResponse, 500: ServerErrorResponse }
     )
+
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
 sio = flask_socketio.SocketIO(
     manage_session=False,
