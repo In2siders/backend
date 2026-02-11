@@ -63,7 +63,7 @@ info = Info(
     title="In2siders API",
     version="1.0.0-dev",
     termsOfService="https://in2siders.app/tos",
-    contact=Contact(name="In2siders Support", url="https://in2siders.com", email="support@in2siders.com"),
+    contact=Contact(name="In2siders Support", url="https://in2siders.app", email="support@in2siders.app"),
     summary="API for In2siders platform",
     description="This is the API documentation for the In2siders platform.",
     license=License(name="MIT", url="https://opensource.org/licenses/MIT", identifier="MIT")
