@@ -1,11 +1,18 @@
+import datetime as dt
+import os
 import uuid
-from peewee import CharField, TextField, UUIDField, ForeignKeyField, IPField, ManyToManyField, Model, BooleanField
+from peewee import CharField, TextField, UUIDField, ForeignKeyField, IPField, ManyToManyField, Model, BooleanField, DateTimeField, CompositeKey
 from systems.db import db
 
 # Base model
 class BaseModel(Model):
     class Meta:
         database = db
+
+datetime = dt.datetime
+td = dt.timedelta
+utc = dt.timezone.utc
+utcn = lambda: datetime.now(utc)
 
 # ==============
 # ORM Structures
@@ -41,11 +48,22 @@ class Group(BaseModel):
     groupName = CharField(unique=True)
     description = TextField() # TODO: WAITING FOR FRONTEND DESIGN.
     owner = ForeignKeyField(User, backref='owned_groups')
-    group_key = CharField() # Symmetric key for the group
     members = ManyToManyField(User, backref='groups')
 
 # Membership model (M2M relation | User <-> Group)
-Membership = Group.members.get_through_model() 
+class Membership(BaseModel):
+    group = ForeignKeyField(Group, backref='members')
+    user = ForeignKeyField(User, backref='memberships')
+    encrypted_groupkey = TextField()
+    groupRole = CharField(default='member')
+    joined_at = DateTimeField(default=lambda: datetime.now(utc))
+    updated_at = DateTimeField(default=lambda: datetime.now(utc))
+
+    class Meta:
+        primary_key = CompositeKey('group', 'user')
+        indexes = (
+            (('group', 'user'), True), # Unique constraint on groupId and userId
+        )
 
 # Message schema
 class Message(BaseModel):
@@ -63,8 +81,7 @@ class Attachment(BaseModel):
     uploaded_by = ForeignKeyField(User, backref='attachments')
     uploaded_at = CharField() # Timestamp of upload
     message = ForeignKeyField(Message, backref='attachments', null=True)
-    
-    
+
 # Message transport
 class MessageTransport(BaseModel):
     message = ForeignKeyField(Message, backref='transports')
@@ -77,15 +94,24 @@ class MessageTransport(BaseModel):
             (('source', 'target', 'message'), True), # Unique constraint on source, target, and message
         )
 
+# Group invitations
+class GroupInvitations(BaseModel):
+    invitationId = TextField(primary_key=True, default=lambda: os.urandom(24).hex())
+    group = ForeignKeyField(Group, backref='invitations')
+    expires_at = DateTimeField(default=lambda: utcn()+td(days=3))
+    encrypted_groupkey = TextField()
+
 def orm_get_all_models():
-    return [User, Session, Group, Membership, Attachment, Message, MessageTransport, Challenge]
+    import warnings
+    warnings.warn("We have our greate friend Gurasic that tried to use this function, but it is NOT RECOMMENDED to use it outside of 'initialize_db()' function. So, this will be removed in the future (3 days max.)", DeprecationWarning, stacklevel=2)
+    return [User, Challenge, Session, Group, Membership, Message, Attachment, MessageTransport]
 
 def initialize_db():
     try:
         if not db.is_closed():
             db.close()
         with db.atomic():
-            db.create_tables(orm_get_all_models(), safe=True)
+            db.create_tables([User, Challenge, Session, Group, Membership, Message, Attachment, MessageTransport, GroupInvitations], safe=True)
 
         print("[*] Database initialized and tables created.")
         return True

@@ -5,6 +5,8 @@ from systems.orm import Session, User
 from systems.db import db
 from hashlib import sha256, md5
 
+from utils import get_client_ip
+
 def create_session(user, request_ip):
     import binascii, uuid
     try:
@@ -81,3 +83,12 @@ def invalidate_session(session_id, session_fingerprint):
             return True
         except DoesNotExist:
             return False
+
+def secure_session(session_id):
+    client_ip = get_client_ip()
+    session, error = get_user_and_session_from_session(session_id, request_ip=client_ip)
+
+    print(f"Secure session check: session_id={session_id}, client_ip={client_ip}, error={error}")
+    print(f"Session found: {session is not None}, Session user: {session.user.username if session else 'N/A'}")
+
+    return (session is not None and not error), session.user if session else None

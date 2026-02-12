@@ -1,14 +1,13 @@
 # Dotenv
 from dotenv import load_dotenv
 
-from utils import get_client_ip
 # Load environment variables
 load_dotenv()
 
 from os import getenv
 
 # Flask
-from common import app, sio, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, IPMismatchResponse, BadRequestResponse, ServerErrorResponse
+from common import app, NotFoundResponse, UnauthorizedResponse, ForbiddenResponse, IPMismatchResponse, BadRequestResponse, ServerErrorResponse
 from flask import request, make_response
 from flask_cors import CORS
 from pydantic import BaseModel
@@ -23,22 +22,20 @@ from pydantic import BaseModel
 # Flask
 from common import (BadRequestResponse, ForbiddenResponse,
                     NotFoundResponse, ServerErrorResponse,
-                    UnauthorizedResponse, app, sio)
-from systems.auth import (add_user, create_challenge, ensure_unique_username,
-                          verify_challenge)
-# Databases
-from systems.orm import initialize_db
-from systems.sessions import (check_session, create_session,
-                              get_sessions_for_user, get_user_from_session,
-                              get_user_and_session_from_session, invalidate_session)
+                    UnauthorizedResponse, app)
 # Websocket file
 from wss import wss_app
+
+# Libs
+from utils import get_client_ip
+from net import secure_app
 
 # Databases
 from systems.db import proxy_load
 from systems.orm import initialize_db
 from systems.auth import add_user, ensure_unique_username, create_challenge, verify_challenge
 from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user, invalidate_session
+from systems.groups import create_group, generate_group_invite_code, join_group_with_invite_code, get_user_encrypted_groupkeys
 
 # ============================
 
@@ -304,29 +301,8 @@ def route_register_user(body: RegisterUserBody):
         return ServerErrorResponse().model_dump(), 500
 
 #
-# Chat requests
+# Chats requests
 #
-
-# > Get all chat groups
-class GetChatGroupsResponse(BaseModel):
-    data: list = []
-    success: bool = True
-
-@app.get('/v1/chat/groups', responses={200: GetChatGroupsResponse})
-def route_get_chat_groups():
-    session_header = request.cookies.get('i2session')
-    if not session_header:
-        return UnauthorizedResponse().model_dump(), 401
-
-    testing_static_groups = [
-        { "id": 1, "name": "Acme Inc."},
-        { "id": "xsfrds", "name": "Grupo de super pequeños amigos!"},
-        { "id": "uxxx", "name": "In2siders Development"},
-    ]
-
-    return GetChatGroupsResponse(
-        data=testing_static_groups
-    ).model_dump(), 200
 
 # > Get chat metadata
 class GetChatMetadataResponse(BaseModel):
@@ -359,6 +335,122 @@ def route_get_chat_metadata(path: GetMetadataPath):
     return GetChatMetadataResponse(
         data=testing_static_metadata
     ).model_dump(), 200
+
+
+#
+# Groups
+#
+
+# > Create group
+class CreateGroupBody(BaseModel):
+    name: str
+    encodedImage: str | None = None
+    encryptedKey: str | None = None
+
+class CreateGroupResponse(BaseModel):
+    success: bool = True
+
+@app.post('/v1/groups/create', responses={201: CreateGroupResponse})
+@secure_app
+def route_create_group(body: CreateGroupBody, user):
+    name = body.name
+    encoded_image = body.encodedImage # TODO: Wait for a way to store the image...
+    encrypted_key = body.encryptedKey
+
+    if not name:
+        return BadRequestResponse(error="Group name is required.").model_dump(), 400
+
+    if not encrypted_key:
+        return BadRequestResponse(error="Server did not receive the encrypted group key. On-device crypto module may failed generation and encryption of the group key.").model_dump(), 400
+
+    if len(name) < 3:
+        return BadRequestResponse(error="Group name must be at least 3 characters long.").model_dump(), 400
+
+    print(f"Creating group with name: {name} for user: {user}")
+
+    try:
+        create_group(name=name, owner=user, encrypted_groupkey=encrypted_key)
+
+        return CreateGroupResponse().model_dump(), 201
+    except Exception as e:
+        return ServerErrorResponse(error=str(e)).model_dump(), 500
+
+# > Get groups
+class GetChatGroupsResponse(BaseModel):
+    data: list = []
+    success: bool = True
+
+@app.get('/v1/groups', responses={200: GetChatGroupsResponse})
+def route_get_chat_groups():
+    session_header = request.cookies.get('i2session')
+    if not session_header:
+        return UnauthorizedResponse().model_dump(), 401
+
+    testing_static_groups = [
+        { "id": 1, "name": "Acme Inc."},
+        { "id": "xsfrds", "name": "Grupo de super pequeños amigos!"},
+        { "id": "uxxx", "name": "In2siders Development"},
+    ]
+
+    return GetChatGroupsResponse(
+        data=testing_static_groups
+    ).model_dump(), 200
+
+# > Generate group invite code
+class GenerateGroupInviteCodeBody(BaseModel):
+    groupId: str
+    encryptedGroupKey: str
+
+class GenerateGroupInviteCodeResponse(BaseModel):
+    success: bool = True
+    data: dict | None = None
+
+@app.post('/v1/groups/generate-invite-code', responses={200: GenerateGroupInviteCodeResponse})
+@secure_app
+def route_generate_group_invite_code(body: GenerateGroupInviteCodeBody, user):
+    group_id = body.groupId
+    encrypted_group_key = body.encryptedGroupKey
+
+    if not group_id or not encrypted_group_key:
+        return BadRequestResponse(error="Group ID and encrypted group key are required.").model_dump(), 400
+
+    try:
+        invite_code = generate_group_invite_code(group_id=group_id, user=user, encrypted_groupkey=encrypted_group_key)
+        if not invite_code:
+            return ServerErrorResponse(error="Failed to generate invite code.").model_dump(), 500
+
+        return { "success": True, "data": { "invite": invite_code } }, 200
+    except Exception as e:
+        return ServerErrorResponse(error=str(e)).model_dump(), 500
+
+# > Join group with invite code
+class JoinGroupWithInviteCodeBody(BaseModel):
+    inviteCode: str
+    encryptedGroupKey: str
+
+class JoinGroupWithInviteCodeResponse(BaseModel):
+    success: bool = True
+
+@app.post('/v1/groups/join-code', responses={200: JoinGroupWithInviteCodeResponse})
+@secure_app
+def route_join_group_with_invite_code(body: JoinGroupWithInviteCodeBody, user):
+    invite_code = body.inviteCode
+    encrypted_group_key = body.encryptedGroupKey
+
+    if not invite_code or not encrypted_group_key:
+        return BadRequestResponse(error="Invite code and encrypted group key are required.").model_dump(), 400
+
+    try:
+        join_group_with_invite_code(invite_code=invite_code, user=user, encrypted_groupkey=encrypted_group_key)
+        return JoinGroupWithInviteCodeResponse().model_dump(), 200
+    except Exception as e:
+        return ServerErrorResponse(error=str(e)).model_dump(), 500
+
+# > Leave group
+@app.post('/v1/groups/leave', responses={200: None})
+@secure_app
+def route_leave_group(body):
+    pass
 
 # ====
 # Run server

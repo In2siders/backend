@@ -1,5 +1,5 @@
 from os import getenv
-from peewee import Proxy
+from peewee import Proxy, DoesNotExist
 from playhouse.db_url import connect
 
 db = Proxy()
@@ -13,3 +13,5 @@ def proxy_load():
         print("[- ERROR -] Failed to change proxy to :", e)
         return False
     return True
+
+DoesNotExist = DoesNotExist

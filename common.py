@@ -14,6 +14,8 @@ from flask_openapi3.types import SecuritySchemesDict
 
 from pydantic import BaseModel
 
+from systems.sessions import secure_session
+
 auth_header = {
     "type": "apiKey",
     "in": "header",
