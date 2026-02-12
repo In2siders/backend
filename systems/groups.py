@@ -65,6 +65,55 @@ def join_group_with_invite_code(invite_code, user, encrypted_groupkey):
     except Exception as e:
         raise ValueError(f"Failed to join group with invite code: {str(e)}")
 
-def get_user_encrypted_groupkeys(user):
-    # Placeholder for retrieving user's encrypted group keys logic
-    pass
+def get_user_memberships(user):
+    try:
+        user = User.get(User.userId == user.userId)
+        if not user:
+            raise ValueError("User not found.")
+
+        memberships = Membership.select().where(Membership.user == user)
+        return memberships
+    except DoesNotExist:
+        raise ValueError("Failed to retrieve memberships: User does not exist.")
+    except Exception as e:
+        raise ValueError(f"Failed to retrieve memberships: {str(e)}")
+
+def get_group_metadata(user, group_id):
+    try:
+        user = User.get(User.userId == user.userId)
+        if not user:
+            raise ValueError("User not found.")
+
+        group = Group.get(Group.groupId == group_id)
+        if not group:
+            raise ValueError("Group not found.")
+
+        membership = Membership.get((Membership.user == user) & (Membership.group == group))
+        if not membership:
+            raise ValueError("You are not a member of this group.")
+
+        members = Membership.select().where(Membership.group == group)
+
+        return group, membership, members
+    except DoesNotExist:
+        raise ValueError("Failed to retrieve group metadata: User or group does not exist.")
+    except Exception as e:
+        raise ValueError(f"Failed to retrieve group metadata: {str(e)}")
+
+def get_user_membership_by_group(user, group_id):
+    """idk, created if it works on a future, now there is no usage..."""
+    try:
+        user = User.get(User.userId == user.userId)
+        if not user:
+            raise ValueError("User not found.")
+
+        group = Group.get(Group.groupId == group_id)
+        if not group:
+            raise ValueError("Group not found.")
+
+        membership = Membership.get((Membership.user == user) & (Membership.group == group))
+        return membership
+    except DoesNotExist:
+        raise ValueError("Failed to retrieve membership: User or group does not exist.")
+    except Exception as e:
+        raise ValueError(f"Failed to retrieve membership: {str(e)}")

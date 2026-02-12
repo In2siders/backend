@@ -34,8 +34,8 @@ from net import secure_app
 from systems.db import proxy_load
 from systems.orm import initialize_db
 from systems.auth import add_user, ensure_unique_username, create_challenge, verify_challenge
-from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user, invalidate_session
-from systems.groups import create_group, generate_group_invite_code, join_group_with_invite_code, get_user_encrypted_groupkeys
+from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user, invalidate_session, get_user_and_session_from_session
+from systems.groups import create_group, generate_group_invite_code, join_group_with_invite_code, get_user_memberships, get_group_metadata
 
 # ============================
 
@@ -313,28 +313,27 @@ class GetMetadataPath(BaseModel):
     chatid: str
 
 @app.get('/v1/chat/metadata/<chatid>', responses={200: GetChatMetadataResponse})
-def route_get_chat_metadata(path: GetMetadataPath):
-    session_header = request.cookies.get('i2session')
-    if not session_header:
-        return UnauthorizedResponse().model_dump(), 401
-
+@secure_app
+def route_get_chat_metadata(path: GetMetadataPath, user):
     chatid = path.chatid
 
-    testing_static_metadata = {
-        "id": chatid,
-        "name": f"Chat {chatid}",
-        "people": [
-            { "id": 1, "username": "User1" },
-            { "id": 2, "username": "User2" },
-        ],
-        "online": [
-            { "id": 1, "username": "User1" },
-        ]
-    }
+    try:
+        group, membership, members = get_group_metadata(user, chatid)
+        if group and membership:
+            metadata = {
+                "id": group.groupId,
+                "name": group.groupName,
+                "people": [
+                    { "id": m.user.userId, "username": m.user.username, "role": m.groupRole } for m in members
+                ],
+                "online": [] # TODO: Implement online status tracking
+            }
+        else:
+            return NotFoundResponse(error="Chat not found.").model_dump(), 404
+    except Exception as e:
+        return ServerErrorResponse(error=str(e)).model_dump(), 500
 
-    return GetChatMetadataResponse(
-        data=testing_static_metadata
-    ).model_dump(), 200
+    return GetChatMetadataResponse(data=metadata).model_dump(), 200
 
 
 #
@@ -381,19 +380,29 @@ class GetChatGroupsResponse(BaseModel):
     success: bool = True
 
 @app.get('/v1/groups', responses={200: GetChatGroupsResponse})
-def route_get_chat_groups():
+@secure_app
+def route_get_chat_groups(user):
     session_header = request.cookies.get('i2session')
     if not session_header:
         return UnauthorizedResponse().model_dump(), 401
 
-    testing_static_groups = [
-        { "id": 1, "name": "Acme Inc."},
-        { "id": "xsfrds", "name": "Grupo de super pequeños amigos!"},
-        { "id": "uxxx", "name": "In2siders Development"},
-    ]
+    groups = []
+
+    try:
+        memberships = get_user_memberships(user)
+        for membership in memberships:
+            group = membership.group
+            groups.append({
+                "id": group.groupId,
+                "image": "",
+                "name": group.groupName,
+                "role": membership.groupRole
+            })
+    except Exception as e:
+        return ServerErrorResponse(error=str(e)).model_dump(), 500
 
     return GetChatGroupsResponse(
-        data=testing_static_groups
+        data=groups
     ).model_dump(), 200
 
 # > Generate group invite code
