@@ -106,12 +106,24 @@ def orm_get_all_models():
     warnings.warn("We have our greate friend Gurasic that tried to use this function, but it is NOT RECOMMENDED to use it outside of 'initialize_db()' function. So, this will be removed in the future (3 days max.)", DeprecationWarning, stacklevel=2)
     return [User, Challenge, Session, Group, Membership, Message, Attachment, MessageTransport]
 
+def create_init_data():
+    try:
+        with db.atomic():
+            if not User.select().where(User.username == "Deleted Account").exists():
+                User.create(userId=uuid.UUID(bytes=b'\x00'*16), username="Deleted Account", pub_key="", canLogin=False)
+        print("[*] Initial data created.")
+        return True
+    except Exception as e:
+        print("[- ERROR -] Failed to create initial data:", e)
+        return False
+
 def initialize_db():
     try:
         if not db.is_closed():
             db.close()
         with db.atomic():
             db.create_tables([User, Challenge, Session, Group, Membership, Message, Attachment, MessageTransport, GroupInvitations], safe=True)
+            create_init_data()
 
         print("[*] Database initialized and tables created.")
         return True
