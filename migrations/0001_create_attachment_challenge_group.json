@@ -1,0 +1,873 @@
+{
+  "name": "0001_create_attachment_challenge_group",
+  "created_at": "2026-02-13T17:14:34.007761+00:00",
+  "operations": [
+    {
+      "op": "create_table",
+      "table": "attachment",
+      "fields": {
+        "attachmentId": {
+          "type": "uuid",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "file_url": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "file_name": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "uploaded_by_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "uploaded_at": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "message_id": {
+          "type": "fk",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "message",
+          "rel_field": "messageId",
+          "on_delete": null,
+          "on_update": null
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    {
+      "op": "create_table",
+      "table": "challenge",
+      "fields": {
+        "challengeId": {
+          "type": "uuid",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "user_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "solution": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "expires_at": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    {
+      "op": "create_table",
+      "table": "group",
+      "fields": {
+        "groupId": {
+          "type": "uuid",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "groupName": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": true,
+          "index": false,
+          "max_length": 255
+        },
+        "description": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "owner_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    {
+      "op": "create_table",
+      "table": "groupinvitations",
+      "fields": {
+        "invitationId": {
+          "type": "text",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "group_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "group",
+          "rel_field": "groupId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "expires_at": {
+          "type": "datetime",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "encrypted_groupkey": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    {
+      "op": "create_table",
+      "table": "membership",
+      "fields": {
+        "group_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "group",
+          "rel_field": "groupId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "user_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "encrypted_groupkey": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "groupRole": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255,
+          "default": "member"
+        },
+        "joined_at": {
+          "type": "datetime",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "updated_at": {
+          "type": "datetime",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        }
+      },
+      "indexes": [
+        {
+          "columns": [
+            "group_id",
+            "user_id"
+          ],
+          "unique": true
+        }
+      ],
+      "composite_key": [
+        "group_id",
+        "user_id"
+      ]
+    },
+    {
+      "op": "create_table",
+      "table": "message",
+      "fields": {
+        "messageId": {
+          "type": "uuid",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "body": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "sender_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "timestamp": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "chatid": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    {
+      "op": "create_table",
+      "table": "messagetransport",
+      "fields": {
+        "message_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "message",
+          "rel_field": "messageId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "source_id": {
+          "type": "fk",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "target": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        }
+      },
+      "indexes": [
+        {
+          "columns": [
+            "source_id",
+            "target",
+            "message_id"
+          ],
+          "unique": true
+        }
+      ],
+      "composite_key": null
+    },
+    {
+      "op": "create_table",
+      "table": "session",
+      "fields": {
+        "sessionId": {
+          "type": "char",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "user_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "userIp": {
+          "type": "ip",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "fingerprint": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "max_length": 255
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    {
+      "op": "create_table",
+      "table": "user",
+      "fields": {
+        "userId": {
+          "type": "uuid",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "username": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": true,
+          "index": false,
+          "max_length": 255
+        },
+        "pub_key": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true
+        },
+        "bio": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "default": "No bio yet!"
+        },
+        "canLogin": {
+          "type": "bool",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "default": true
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    }
+  ],
+  "snapshot": {
+    "attachment": {
+      "table_name": "attachment",
+      "fields": {
+        "attachmentId": {
+          "type": "uuid",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "file_url": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "file_name": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "uploaded_by_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "uploaded_at": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "message_id": {
+          "type": "fk",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "message",
+          "rel_field": "messageId",
+          "on_delete": null,
+          "on_update": null
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    "challenge": {
+      "table_name": "challenge",
+      "fields": {
+        "challengeId": {
+          "type": "uuid",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "user_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "solution": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "expires_at": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    "group": {
+      "table_name": "group",
+      "fields": {
+        "groupId": {
+          "type": "uuid",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "groupName": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": true,
+          "index": false,
+          "max_length": 255
+        },
+        "description": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "owner_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    "groupinvitations": {
+      "table_name": "groupinvitations",
+      "fields": {
+        "invitationId": {
+          "type": "text",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "group_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "group",
+          "rel_field": "groupId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "expires_at": {
+          "type": "datetime",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "encrypted_groupkey": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    "membership": {
+      "table_name": "membership",
+      "fields": {
+        "group_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "group",
+          "rel_field": "groupId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "user_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "encrypted_groupkey": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "groupRole": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255,
+          "default": "member"
+        },
+        "joined_at": {
+          "type": "datetime",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "updated_at": {
+          "type": "datetime",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        }
+      },
+      "indexes": [
+        {
+          "columns": [
+            "group_id",
+            "user_id"
+          ],
+          "unique": true
+        }
+      ],
+      "composite_key": [
+        "group_id",
+        "user_id"
+      ]
+    },
+    "message": {
+      "table_name": "message",
+      "fields": {
+        "messageId": {
+          "type": "uuid",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "body": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "sender_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "timestamp": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "chatid": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    "messagetransport": {
+      "table_name": "messagetransport",
+      "fields": {
+        "message_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "message",
+          "rel_field": "messageId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "source_id": {
+          "type": "fk",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "target": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        }
+      },
+      "indexes": [
+        {
+          "columns": [
+            "source_id",
+            "target",
+            "message_id"
+          ],
+          "unique": true
+        }
+      ],
+      "composite_key": null
+    },
+    "session": {
+      "table_name": "session",
+      "fields": {
+        "sessionId": {
+          "type": "char",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false,
+          "max_length": 255
+        },
+        "user_id": {
+          "type": "fk",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "rel_model": "user",
+          "rel_field": "userId",
+          "on_delete": null,
+          "on_update": null
+        },
+        "userIp": {
+          "type": "ip",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false
+        },
+        "fingerprint": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true,
+          "max_length": 255
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    },
+    "user": {
+      "table_name": "user",
+      "fields": {
+        "userId": {
+          "type": "uuid",
+          "null": false,
+          "primary_key": true,
+          "unique": false,
+          "index": false
+        },
+        "username": {
+          "type": "char",
+          "null": false,
+          "primary_key": false,
+          "unique": true,
+          "index": false,
+          "max_length": 255
+        },
+        "pub_key": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": true
+        },
+        "bio": {
+          "type": "text",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "default": "No bio yet!"
+        },
+        "canLogin": {
+          "type": "bool",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "index": false,
+          "default": true
+        }
+      },
+      "indexes": [],
+      "composite_key": null
+    }
+  }
+}

@@ -118,6 +118,21 @@ def create_init_data():
         print("[- ERROR -] Failed to create initial data:", e)
         return False
 
+def generate_full_db_sql_file():
+    try:
+        sql_statements = []
+        for model in orm_get_all_models():
+            create_table_sql = model._schema.create_table()
+            sql_statements.append(create_table_sql)
+        full_sql = "\n\n".join(sql_statements)
+        with open("full_db_schema.sql", "w") as f:
+            f.write(full_sql)
+        print("[*] Full DB SQL file generated successfully.")
+        return True
+    except Exception as e:
+        print("[- ERROR -] Failed to generate full DB SQL file:", e)
+        return False
+
 def initialize_db():
     try:
         if not db.is_closed():
