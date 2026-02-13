@@ -890,21 +890,21 @@ def _print_op_summary(op: dict):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="migrations.py",
+        prog="migrate.py",
         description="Peewee DB-agnostic migration system for systems.orm",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""\
             Examples:
-              python migrations.py init                  Initialise migration tracking
-              python migrations.py make                  Auto-detect changes and create migration
-              python migrations.py make "add bio field"  Create migration with a custom name
-              python migrations.py migrate               Apply all pending migrations
-              python migrations.py rollback              Rollback the last migration
-              python migrations.py rollback 3            Rollback the last 3 migrations
-              python migrations.py status                Show applied / pending migrations
-              python migrations.py history               Full migration history
-              python migrations.py snapshot              Print current ORM snapshot (debug)
-              python migrations.py reset                 ⚠ Nuke and recreate everything
+              python migrate.py init                  Initialise migration tracking
+              python migrate.py make                  Auto-detect changes and create migration
+              python migrate.py make "add bio field"  Create migration with a custom name
+              python migrate.py migrate               Apply all pending migrations
+              python migrate.py rollback              Rollback the last migration
+              python migrate.py rollback 3            Rollback the last 3 migrations
+              python migrate.py status                Show applied / pending migrations
+              python migrate.py history               Full migration history
+              python migrate.py snapshot              Print current ORM snapshot (debug)
+              python migrate.py reset                 ⚠ Nuke and recreate everything
         """),
     )
 

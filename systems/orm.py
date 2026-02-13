@@ -118,30 +118,22 @@ def create_init_data():
         print("[- ERROR -] Failed to create initial data:", e)
         return False
 
-def generate_full_db_sql_file():
-    try:
-        sql_statements = []
-        for model in orm_get_all_models():
-            create_table_sql = model._schema.create_table()
-            sql_statements.append(create_table_sql)
-        full_sql = "\n\n".join(sql_statements)
-        with open("full_db_schema.sql", "w") as f:
-            f.write(full_sql)
-        print("[*] Full DB SQL file generated successfully.")
-        return True
-    except Exception as e:
-        print("[- ERROR -] Failed to generate full DB SQL file:", e)
-        return False
-
 def initialize_db():
     try:
         if not db.is_closed():
             db.close()
-        with db.atomic():
-            db.create_tables([User, Challenge, Session, Group, Membership, Message, Attachment, MessageTransport, GroupInvitations], safe=True)
-            create_init_data()
 
-        print("[*] Database initialized and tables created.")
+        # Apply any pending migrations (creates tables via migration files)
+        from migrate import cmd_init, cmd_migrate
+        cmd_init()      # Ensures _migrations table + migrations/ dir exist
+        cmd_migrate()   # Applies all pending .json migration files
+
+        # Fallback: create any tables not yet covered by migrations (safe=True is a no-op if they exist)
+        db.create_tables([User, Challenge, Session, Group, Membership, Message, Attachment, MessageTransport, GroupInvitations], safe=True)
+
+        create_init_data()
+
+        print("[*] Database initialized and migrations applied.")
         return True
     except Exception as e:
         print("[- ERROR -] Failed to initialize database:", e)
