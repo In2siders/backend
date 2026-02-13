@@ -190,7 +190,8 @@ def ws_on_message_send(json_data, sid, user, session):
     display_urls = [] 
 
     for att in raw_attachments:
-        s3_key = upload_base64_to_s3(att.get('data'), att.get('filename', 'file'), chat_id)
+        prefix = f"chats/{chat_id}"
+        s3_key = upload_base64_to_s3(att.get('data'), att.get('filename', 'file'), prefix)
         
         if s3_key:
             db_keys.append(s3_key)
