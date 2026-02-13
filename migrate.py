@@ -6,13 +6,13 @@ Works with any database backend supported by Peewee (SQLite, PostgreSQL, MySQL)
 via the Proxy already configured in systems.db.
 
 Usage:
-    python migrations.py init          — Create the migrations tracking table
-    python migrations.py make [name]   — Auto-detect schema changes and generate a migration
-    python migrations.py migrate       — Apply all pending migrations
-    python migrations.py rollback [n]  — Rollback the last n migrations (default 1)
-    python migrations.py status        — Show applied / pending migrations
-    python migrations.py history       — Full migration history
-    python migrations.py reset         — Reset DB to current ORM state (⚠ destroys data)
+    python migrate.py.py init          — Create the migrate.py tracking table
+    python migrate.py.py make [name]   — Auto-detect schema changes and generate a migration
+    python migrate.py.py migrate       — Apply all pending migrate.py
+    python migrate.py.py rollback [n]  — Rollback the last n migrate.py (default 1)
+    python migrate.py.py status        — Show applied / pending migrate.py
+    python migrate.py.py history       — Full migration history
+    python migrate.py.py reset         — Reset DB to current ORM state (⚠ destroys data)
 
 As last point, im not very proud, buut, this was made with Claude (Opus 4.6) help and I must say... It's a beautiful work...
 
@@ -21,12 +21,12 @@ As last point, im not very proud, buut, this was made with Claude (Opus 4.6) hel
 Documentation for anyone:
 
 # Dev changes a model in systems/orm.py, then:
-python migrations.py make "added avatar field to user"
-python migrations.py migrate
-git add migrations/ && git commit -m "migration: added avatar field to user"
+python migrate.py.py make "added avatar field to user"
+python migrate.py.py migrate
+git add migrate.py/ && git commit -m "migration: added avatar field to user"
 
 # Another dev pulls, then:
-python migrations.py migrate   # applies any new migration files
+python migrate.py.py migrate   # applies any new migration files
 """
 
 from __future__ import annotations
