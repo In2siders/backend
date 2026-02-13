@@ -11,14 +11,12 @@ import os
 from systems.sessions import get_user_from_session
 from systems.wss_addons import check_auth, guarded_join_room, guarded_leave_room, connected_sessions, messages
 
-from systems.orm import orm_get_all_models
+from systems.orm import Message, Attachment
 from attachtments import upload_base64_to_s3, get_signed_url
 from utils import get_client_ip
 
 @sio.on('connect')
 def ws_on_connect():
-    orm_models = orm_get_all_models()
-
     # Get session token from the connection "auth" payload
     session_token = request.cookies.get('i2session') if request.cookies.get('i2session') else None
 
@@ -62,12 +60,12 @@ def ws_on_connect():
     # Load DB to cache
     seen_chats = set() # Track which rooms we've cleared during this loop
 
-    for message in orm_models[5].select():
+    for message in Message.select().order_by(Message.timestamp.desc()):
         c_id = str(message.chatid) # Keep it as a string to match room:join
 
         # If this is the first time we see this chat_id in THIS loop, clear it
         if c_id not in seen_chats:
-            messages[c_id] = [] 
+            messages[c_id] = []
             seen_chats.add(c_id)
 
         att_urls = [get_signed_url(att.file_url) for att in message.attachments]
@@ -176,23 +174,19 @@ def ws_on_encryption_request(json_data, sid, user, session):
 @sio.on('message:send')
 @check_auth
 def ws_on_message_send(json_data, sid, user, session):
-    orm_models = orm_get_all_models()
-    AttachmentModel = orm_models[4]
-    MessageModel = orm_models[5]
-    
     chat_id = json_data.get('chat_id')
     body = json_data.get('body', "")
     raw_attachments = json_data.get('attachments', [])
 
-    processed_urls = [] 
+    processed_urls = []
 
-    db_keys = []      
-    display_urls = [] 
+    db_keys = []
+    display_urls = []
 
     for att in raw_attachments:
         prefix = f"chats/{chat_id}"
         s3_key = upload_base64_to_s3(att.get('data'), att.get('filename', 'file'), prefix)
-        
+
         if s3_key:
             db_keys.append(s3_key)
             signed_url = get_signed_url(s3_key)
@@ -210,20 +204,20 @@ def ws_on_message_send(json_data, sid, user, session):
 
     # 3. Save Message to DB
     with db.atomic():
-        db_message = MessageModel.create(
+        db_message = Message.create(
             body=msg_obj["body"],
             sender=user,
             timestamp=msg_obj["timestamp"],
             chatid=chat_id
         )
-        
+
         for key in db_keys:
-            AttachmentModel.create(
-                file_url=key,  
+            Attachment.create(
+                file_url=key,
                 file_name="attachment",
                 uploaded_by=user,
                 uploaded_at=db_message.timestamp,
-                message=db_message  
+                message=db_message
             )
 
     if chat_id not in messages:

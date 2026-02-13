@@ -102,11 +102,6 @@ class GroupInvitations(BaseModel):
     expires_at = DateTimeField(default=lambda: utcn()+td(days=3))
     encrypted_groupkey = TextField()
 
-def orm_get_all_models():
-    import warnings
-    warnings.warn("We have our greate friend Gurasic that tried to use this function, but it is NOT RECOMMENDED to use it outside of 'initialize_db()' function. So, this will be removed in the future (3 days max.)", DeprecationWarning, stacklevel=2)
-    return [User, Challenge, Session, Group, Membership, Message, Attachment, MessageTransport]
-
 def create_init_data():
     try:
         with db.atomic():
