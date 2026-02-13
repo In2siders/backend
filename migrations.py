@@ -596,18 +596,19 @@ def _load_last_snapshot() -> dict:
 
 
 def _save_migration_file(name: str, ops: list[dict], snapshot: dict) -> Path:
-    _ensure_migrations_dir()
-    num = _next_migration_number()
-    filename = f"{num:04d}_{_slug(name)}.json"
-    path = MIGRATIONS_DIR / filename
-    data = {
-        "name": f"{num:04d}_{_slug(name)}",
-        "created_at": dt.datetime.now(UTC).isoformat(),
-        "operations": ops,
-        "snapshot": snapshot,
-    }
-    path.write_text(json.dumps(data, indent=2, default=str))
-    return path
+  _ensure_migrations_dir()
+  num = _next_migration_number()
+  filename = f"{num:04d}_{_slug(name)}.json"
+  path = MIGRATIONS_DIR / filename
+  data = {
+    "name": f"{num:04d}_{_slug(name)}",
+    "created_at": dt.datetime.now(UTC).isoformat(),
+    "operations": ops,
+    "snapshot": snapshot,
+  }
+
+  path.write_text(json.dumps(data, separators=(",", ":"), default=str))
+  return path
 
 
 def _load_migration_file(path: Path) -> dict:
