@@ -3,14 +3,14 @@ import os
 from systems.db import db, DoesNotExist
 from systems.orm import Group, Membership, GroupInvitations, User
 
-def create_group(name, owner, encrypted_groupkey):
+def create_group(name, owner, encrypted_groupkey, imageKey):
     owner_user = User.get(User.userId == owner.userId)
     if not owner_user:
         raise ValueError("We didn't find the owner in our database. Please make sure you are logged in and try again.")
 
     try:
         with db.atomic():
-            new_group = Group.create(groupName=name, owner=owner_user, description="No description yet.")
+            new_group = Group.create(groupName=name, owner=owner_user, description="No description yet.", image=imageKey)
             Membership.create(group=new_group, user=owner_user, encrypted_groupkey=encrypted_groupkey, groupRole='owner')
     except Exception as e:
         raise ValueError(f"An error occurred while creating the group: {str(e)}")

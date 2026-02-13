@@ -49,6 +49,7 @@ class Group(BaseModel):
     description = TextField() # TODO: WAITING FOR FRONTEND DESIGN.
     owner = ForeignKeyField(User, backref='owned_groups')
     members = ManyToManyField(User, backref='groups')
+    image = TextField(null=True)
 
 # Membership model (M2M relation | User <-> Group)
 class Membership(BaseModel):

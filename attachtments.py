@@ -18,28 +18,42 @@ s3 = boto3.client(
 BUCKET_NAME = getenv("S3_BUCKET_NAME", "in2siders-attachments")
 
 
-def upload_base64_to_s3(base64_str, filename, chat_id):
+def upload_base64_to_s3(base64_str, filename, prefix):
+    """
+    Generic S3 upload:
+    - base64_str: The raw b64 data
+    - filename: Original name of the file
+    - prefix: The folder path (e.g., 'chats/123' or 'groups/abc/icons')
+    """
     if not base64_str:
         return None
 
     try:
+        # Strip metadata if present
         if "," in base64_str:
             base64_str = base64_str.split(",")[1]
 
         file_bytes = base64.b64decode(base64_str)
         file_obj = BytesIO(file_bytes)
 
-        unique_name = f"{str(uuid.uuid4()).replace('-', '')}_{filename}"
-        s3_path = f"chats/{chat_id}/{unique_name}"
+        # Generate a unique filename to prevent overwriting
+        unique_name = f"{uuid.uuid4().hex}_{filename}"
+        
+        # Combine prefix and filename for the final S3 Key
+        s3_path = f"{prefix}/{unique_name}"
 
         # Upload to S3
-        s3.upload_fileobj(file_obj, BUCKET_NAME, s3_path, ExtraArgs={"ACL": "private"})
+        s3.upload_fileobj(
+            file_obj, 
+            BUCKET_NAME, 
+            s3_path, 
+            ExtraArgs={"ACL": "private"}
+        )
 
         return s3_path
     except Exception as e:
         print(f"[-] S3 Upload Error: {e}")
         return None
-
 
 def get_signed_url(s3_key):
     if not s3_key:

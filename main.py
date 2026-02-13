@@ -37,6 +37,10 @@ from systems.auth import add_user, ensure_unique_username, create_challenge, ver
 from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user, invalidate_session, get_user_and_session_from_session
 from systems.groups import create_group, generate_group_invite_code, join_group_with_invite_code, get_user_memberships, get_group_metadata
 
+# Boto3 
+from attachtments import upload_base64_to_s3, get_signed_url
+
+
 # ============================
 
 # Dev environment check
@@ -353,7 +357,7 @@ class CreateGroupResponse(BaseModel):
 @secure_app
 def route_create_group(body: CreateGroupBody, user):
     name = body.name
-    encoded_image = body.encodedImage # TODO: Wait for a way to store the image...
+    encoded_image = body.encodedImage 
     encrypted_key = body.encryptedKey
 
     if not name:
@@ -361,18 +365,27 @@ def route_create_group(body: CreateGroupBody, user):
 
     if not encrypted_key:
         return BadRequestResponse(error="Server did not receive the encrypted group key. On-device crypto module may failed generation and encryption of the group key.").model_dump(), 400
+    
+    s3_key = None
+    if encoded_image:
+        s3_key = upload_base64_to_s3(encoded_image, name, "icons/")
 
     if len(name) < 3:
         return BadRequestResponse(error="Group name must be at least 3 characters long.").model_dump(), 400
 
     print(f"Creating group with name: {name} for user: {user}")
-
+    if s3_key:
+        print("Group icon uploaded, storing with key as: " + s3_key)
+    
     try:
-        create_group(name=name, owner=user, encrypted_groupkey=encrypted_key)
+        create_group(name=name, owner=user, encrypted_groupkey=encrypted_key, imageKey=s3_key)
 
         return CreateGroupResponse().model_dump(), 201
     except Exception as e:
         return ServerErrorResponse(error=str(e)).model_dump(), 500
+
+
+    # Yo re chavo asegurandome de casos posibles hehehe, unit testing be damned, just give it to some random chinese kid
 
 # > Get groups
 class GetChatGroupsResponse(BaseModel):
@@ -392,9 +405,12 @@ def route_get_chat_groups(user):
         memberships = get_user_memberships(user)
         for membership in memberships:
             group = membership.group
+            url = None
+            if group.image: 
+                url = get_signed_url(group.image)
             groups.append({
                 "id": group.groupId,
-                "image": "",
+                "image": url,
                 "name": group.groupName,
                 "role": membership.groupRole
             })
