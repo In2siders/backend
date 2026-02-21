@@ -1,10 +1,13 @@
-from os import getenv
+from os import getenv, urandom
 import base64
 import uuid
 import boto3
 from io import BytesIO
-import os
 from botocore.config import Config
+
+# DB
+from systems.db import db
+from systems.orm import Attachment
 
 
 # Pon las keys para que funcione
@@ -38,15 +41,15 @@ def upload_base64_to_s3(base64_str, filename, prefix):
 
         # Generate a unique filename to prevent overwriting
         unique_name = f"{uuid.uuid4().hex}_{filename}"
-        
+
         # Combine prefix and filename for the final S3 Key
         s3_path = f"{prefix}/{unique_name}"
 
         # Upload to S3
         s3.upload_fileobj(
-            file_obj, 
-            BUCKET_NAME, 
-            s3_path, 
+            file_obj,
+            BUCKET_NAME,
+            s3_path,
             ExtraArgs={"ACL": "private"}
         )
 
@@ -55,7 +58,7 @@ def upload_base64_to_s3(base64_str, filename, prefix):
         print(f"[-] S3 Upload Error: {e}")
         return None
 
-def get_signed_url(s3_key):
+def get_signed_url_via_key(s3_key):
     if not s3_key:
         return None
 
@@ -80,3 +83,59 @@ def create_signed_upload_url(filename, chat_id):
     except Exception as e:
         print(f"[-] Signing failed: {e}")
         return None, None
+
+def get_signed_url(attachment_id):
+    try:
+        attachment = Attachment.get_by_id(attachment_id)
+        if not attachment:
+            print(f"[-] Attachment not found for ID: {attachment_id}")
+            return None
+
+        url = s3.generate_presigned_url(
+            "get_object", Params={"Bucket": BUCKET_NAME, "Key": attachment.s3_key}, ExpiresIn=3600
+        )
+        return url
+    except Exception as e:
+        print(f"[-] Error fetching signed URL: {e}")
+        return None
+
+def upload_file(base64: str, filename: str) -> str | None:
+    if not base64 or not filename:
+        return None
+
+    # Uplaod to S3
+    try:
+        # Strip metadata if present
+        if "," in base64_str:
+            base64_str = base64_str.split(",")[1]
+
+        file_bytes = base64.b64decode(base64_str)
+        file_obj = BytesIO(file_bytes)
+        file_ext = filename.split('.')[-1] if '.' in filename else 'bin'
+
+        # Generate a unique filename to prevent overwriting (TODO: Maybe use the bytes, so if the file is the same, it doesn't get uploaded twice?)
+        unique_name = urandom(24).hex()
+
+        # Combine prefix and filename for the final S3 Key
+        s3_path = f"{unique_name}.{file_ext}"
+        # Upload to S3
+        s3.upload_fileobj(
+            file_obj,
+            BUCKET_NAME,
+            s3_path,
+            ExtraArgs={"ACL": "private"}
+        )
+    except Exception as e:
+        print(f"[!] Failed to upload to S3: {e}")
+        return None
+
+    # Upload to DB
+    try:
+        with db.atomic():
+            attachment = Attachment.insert(s3_key=s3_path, filename=filename, message=None).returning(Attachment)
+            attachment.execute()
+
+        return str(attachment.attachmentId)
+    except Exception as e:
+        print(f"[!] Failed to save attachment to DB: {e}")
+        return None

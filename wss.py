@@ -12,7 +12,7 @@ from systems.sessions import get_user_from_session
 from systems.wss_addons import check_auth, guarded_join_room, guarded_leave_room, connected_sessions, messages
 
 from systems.orm import Message, Attachment
-from attachtments import upload_base64_to_s3, get_signed_url
+from systems.attachments import get_signed_url_via_key, get_signed_url
 from utils import get_client_ip
 
 @sio.on('connect')
@@ -68,7 +68,7 @@ def ws_on_connect():
             messages[c_id] = []
             seen_chats.add(c_id)
 
-        att_urls = [get_signed_url(att.file_url) for att in message.attachments]
+        att_urls = [get_signed_url_via_key(att.file_url) for att in message.attachments]
 
         msg_obj = {
             "id": str(message.messageId),
@@ -176,21 +176,7 @@ def ws_on_encryption_request(json_data, sid, user, session):
 def ws_on_message_send(json_data, sid, user, session):
     chat_id = json_data.get('chat_id')
     body = json_data.get('body', "")
-    raw_attachments = json_data.get('attachments', [])
-
-    processed_urls = []
-
-    db_keys = []
-    display_urls = []
-
-    for att in raw_attachments:
-        prefix = f"chats/{chat_id}"
-        s3_key = upload_base64_to_s3(att.get('data'), att.get('filename', 'file'), prefix)
-
-        if s3_key:
-            db_keys.append(s3_key)
-            signed_url = get_signed_url(s3_key)
-            display_urls.append(signed_url)
+    attachments_ids = json_data.get('attachments', [])
 
     msg_obj = {
         "id": os.urandom(8).hex(),
@@ -198,7 +184,7 @@ def ws_on_message_send(json_data, sid, user, session):
         "username": str(user.username),
         "timestamp": datetime.now().timestamp(),
         "body": body,
-        "attachments": [url for url in display_urls if url], # Working links!
+        "attachments": [get_signed_url(att_id) for att_id in attachments_ids if att_id],
         "_hash": md5(f"{user.userId}{body}{datetime.now()}".encode()).hexdigest(),
     }
 
@@ -211,14 +197,8 @@ def ws_on_message_send(json_data, sid, user, session):
             chatid=chat_id
         )
 
-        for key in db_keys:
-            Attachment.create(
-                file_url=key,
-                file_name="attachment",
-                uploaded_by=user,
-                uploaded_at=db_message.timestamp,
-                message=db_message
-            )
+        for att_id in attachments_ids:
+            Attachment.update(message=db_message).where(Attachment.attachmentId == att_id).execute()
 
     if chat_id not in messages:
         messages[chat_id] = []
@@ -226,9 +206,9 @@ def ws_on_message_send(json_data, sid, user, session):
 
     # 4. Broadcast
     sio.emit("message:proxy", {
-        "_push_id": msg_obj["id"],
+        "_push_id": os.urandom(16).hex(),
         "message": msg_obj,
-        "_hash": msg_obj["_hash"],
+        "_hash": md5(str(msg_obj).encode()).hexdigest(),
     }, room=chat_id)
 
     return {"success": True}

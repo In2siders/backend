@@ -77,10 +77,8 @@ class Message(BaseModel):
 # Attachments model
 class Attachment(BaseModel):
     attachmentId = UUIDField(primary_key=True, default=uuid.uuid4)
-    file_url = CharField() # URL to S3 or other storage (Behind a CDN)
-    file_name = CharField() # Original file name
-    uploaded_by = ForeignKeyField(User, backref='attachments')
-    uploaded_at = CharField() # Timestamp of upload
+    s3_key = TextField()
+    filename = TextField(default="noname.bin")
     message = ForeignKeyField(Message, backref='attachments', null=True)
 
 # Message transport
