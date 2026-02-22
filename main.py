@@ -37,8 +37,8 @@ from systems.auth import add_user, ensure_unique_username, create_challenge, ver
 from systems.sessions import create_session, check_session, get_user_from_session, get_sessions_for_user, invalidate_session, get_user_and_session_from_session
 from systems.groups import create_group, generate_group_invite_code, join_group_with_invite_code, get_user_memberships, get_group_metadata
 
-# Boto3 
-from attachtments import upload_base64_to_s3, get_signed_url
+# Boto3
+from systems.attachments import upload_file, get_signed_url
 
 
 # ============================
@@ -365,7 +365,7 @@ def route_create_group(body: CreateGroupBody, user):
 
     if not encrypted_key:
         return BadRequestResponse(error="Server did not receive the encrypted group key. On-device crypto module may failed generation and encryption of the group key.").model_dump(), 400
-    
+
     s3_key = None
     if encoded_image:
         s3_key = upload_base64_to_s3(encoded_image, name, "icons/")
@@ -376,7 +376,7 @@ def route_create_group(body: CreateGroupBody, user):
     print(f"Creating group with name: {name} for user: {user}")
     if s3_key:
         print("Group icon uploaded, storing with key as: " + s3_key)
-    
+
     try:
         create_group(name=name, owner=user, encrypted_groupkey=encrypted_key, imageKey=s3_key)
 
@@ -476,6 +476,31 @@ def route_join_group_with_invite_code(body: JoinGroupWithInviteCodeBody, user):
 @secure_app
 def route_leave_group(body):
     pass
+
+
+# Attachments
+class UploadAttachmentBody(BaseModel):
+    data: str
+    fileName: str
+
+class UploadAttachmentResponse(BaseModel):
+    success: bool = True
+    attachmentId: str | None = None
+
+@app.post("/v1/attachments/upload", responses={200: UploadAttachmentResponse})
+@secure_app
+def route_upload_attachment(body: UploadAttachmentBody, user):
+    base64_str = body.data
+    filename = body.fileName
+
+    if not base64_str or not filename:
+        return BadRequestResponse(error="File data and filename are required.").model_dump(), 400
+
+    db_key = upload_file(base64_str, filename)
+    if not db_key:
+        return ServerErrorResponse(error="Failed to upload attachment.").model_dump(), 500
+
+    return UploadAttachmentResponse(attachmentId=db_key).model_dump(), 200
 
 # ====
 # Run server
