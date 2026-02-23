@@ -86,7 +86,7 @@ def create_signed_upload_url(filename, chat_id):
 
 def get_signed_url(attachment_id):
     try:
-        attachment = Attachment.get_by_id(attachment_id)
+        attachment = Attachment.select().where(Attachment.attachmentId == attachment_id).first()
         if not attachment:
             print(f"[-] Attachment not found for ID: {attachment_id}")
             return None
