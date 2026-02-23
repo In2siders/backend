@@ -657,9 +657,14 @@ class ReadGroupInviteResponse(BaseModel):
     data: dict | None = None
 
 
+class ReadGroupInvitePath(BaseModel):
+    invite_code: str
+
+
 @app.get("/v1/groups/invite/<invite_code>", responses={200: ReadGroupInviteResponse})
 @secure_app
-def route_read_group_invite(invite_code: str, user):
+def route_read_group_invite(path: ReadGroupInvitePath, user):
+    invite_code = path.invite_code
     if not invite_code:
         return BadRequestResponse(error="Invite code is required.").model_dump(), 400
 
