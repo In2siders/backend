@@ -67,11 +67,8 @@ class Session(BaseModel):
 class Group(BaseModel):
     groupId = UUIDField(primary_key=True, default=uuid.uuid4)
     groupName = CharField(unique=True)
-    description = TextField()  # TODO: WAITING FOR FRONTEND DESIGN.
-    owner = ForeignKeyField(
-        User, backref="owned_groups", on_delete="CASCADE", on_update="CASCADE"
-    )
-    members = ManyToManyField(User, backref="groups")
+    owner = ForeignKeyField(User, backref="owned_groups", on_delete="CASCADE", on_update="CASCADE")
+    members = ManyToManyField(User, backref='groups')
     image = TextField(null=True)
 
 
