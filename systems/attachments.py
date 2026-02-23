@@ -132,8 +132,7 @@ def upload_file(base64_str: str, filename: str) -> str | None:
     # Upload to DB
     try:
         with db.atomic():
-            attachment = Attachment(s3_key=s3_path, filename=filename, message=None)
-            attachment.save()
+            attachment = Attachment.create(s3_key=s3_path, filename=filename, message=None)
 
         return str(attachment.attachmentId)
     except Exception as e:
