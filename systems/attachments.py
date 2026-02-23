@@ -99,8 +99,8 @@ def get_signed_url(attachment_id):
         print(f"[-] Error fetching signed URL: {e}")
         return None
 
-def upload_file(base64: str, filename: str) -> str | None:
-    if not base64 or not filename:
+def upload_file(base64_str: str, filename: str) -> str | None:
+    if not base64_str or not filename:
         return None
 
     # Uplaod to S3
@@ -113,8 +113,8 @@ def upload_file(base64: str, filename: str) -> str | None:
         file_obj = BytesIO(file_bytes)
         file_ext = filename.split('.')[-1] if '.' in filename else 'bin'
 
-        # Generate a unique filename to prevent overwriting (TODO: Maybe use the bytes, so if the file is the same, it doesn't get uploaded twice?)
-        unique_name = urandom(24).hex()
+        from hashlib import sha256 # Unique name based on the file content to avoid duplicates
+        unique_name = sha256(file_bytes).hexdigest()
 
         # Combine prefix and filename for the final S3 Key
         s3_path = f"{unique_name}.{file_ext}"
