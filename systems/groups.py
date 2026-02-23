@@ -107,7 +107,7 @@ def get_group_invite_payload(invite_code):
         if not invite:
             raise ValueError("Invalid invite code.")
 
-        if invite.expires_at < dt.datetime.now(utc):
+        if invite.expires_at < dt.datetime.now(utc).replace(tzinfo=None):
             raise ValueError("Invite code has expired.")
 
         return {
