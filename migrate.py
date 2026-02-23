@@ -46,8 +46,8 @@ from typing import Any
 # Bootstrap: make sure the DB proxy is loaded before anything touches peewee
 # ---------------------------------------------------------------------------
 from dotenv import load_dotenv
+load_dotenv()
 from systems.db import db, proxy_load
-load_dotenv()  # Load .env variables before initializing the DB proxy
 proxy_load()
 
 from peewee import (
