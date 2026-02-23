@@ -106,7 +106,7 @@ class Message(BaseModel):
 # Attachments model
 class Attachment(BaseModel):
     attachmentId = UUIDField(primary_key=True, default=uuid.uuid4)
-    s3_key = TextField()
+    s3_key = TextField(index=True, unique=True, default="")
     filename = TextField(default="noname.bin")
     message = ForeignKeyField(
         Message,
