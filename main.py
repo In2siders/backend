@@ -73,7 +73,7 @@ from systems.groups import (
 )
 
 # Boto3
-from systems.attachments import upload_file, get_signed_url, upload_base64_to_s3
+from systems.attachments import upload_file, get_signed_url, get_signed_url_via_key, upload_base64_to_s3
 
 
 # ============================
@@ -510,7 +510,7 @@ def route_get_chat_messages(path: GetMetadataPath, user):
                     "timestamp": msg.timestamp,
                     "body": msg.body,
                     "attachments": [
-                        get_signed_url(att.s3_key) for att in linked_attachments
+                        get_signed_url_via_key(att.s3_key) for att in linked_attachments
                     ],
                     "_hash": "server",
                 }
