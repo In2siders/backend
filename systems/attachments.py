@@ -126,8 +126,13 @@ def upload_file(base64_str: str, filename: str) -> str | None:
             ExtraArgs={"ACL": "private"}
         )
     except Exception as e:
-        print(f"[!] Failed to upload to S3: {e}")
-        return None
+        # If file already exists, retrive it instead of failing
+        if "EntityAlreadyExists" in str(e):
+            s3_path = f"{unique_name}.{file_ext}"
+            print(f"[!] File already exists in S3, using existing file: {s3_path}")
+        else:
+            print(f"[-] S3 Upload Error: {e}")
+            return None
 
     # Upload to DB
     try:
